@@ -604,13 +604,13 @@ protected:
     std::string_view data;
     bt_list_consumer() = default;
 public:
-  bt_list_consumer(std::string_view data_) : data{std::move(data_)} {
-    if (data.empty()) throw std::runtime_error{"Cannot create a bt_list_consumer with an empty string_view"};
-    if (data[0] != 'l')
-      throw std::runtime_error{
-        "Cannot create a bt_list_consumer with non-list data"};
-    data.remove_prefix(1);
-  }
+    bt_list_consumer(std::string_view data_) : data{std::move(data_)} {
+        if (data.empty()) throw std::runtime_error{"Cannot create a bt_list_consumer with an empty string_view"};
+        if (data[0] != 'l')
+            throw std::runtime_error{
+                "Cannot create a bt_list_consumer with non-list data"};
+        data.remove_prefix(1);
+    }
     /// Copy constructor.  Making a copy copies the current position so can be used for multipass
     /// iteration through a list.
     bt_list_consumer(const bt_list_consumer&) = default;
@@ -734,25 +734,25 @@ public:
     /// entire thing.  This is recursive into both lists and dicts and likely to be quite
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
-  std::string_view consume_dict_data() {
-    auto start = data.begin();
-    if (data.size() < 2 || !is_dict()) throw bt_deserialize_invalid_type{"next bt value is not a dict"};
-    data.remove_prefix(1); // Descent into the dict, consumer the "d"
-    while (!is_finished()) {
-      consume_string_view(); // Key is always a string
-      if (!data.empty())
-        skip_value();
-      if (data.empty())
-        throw bt_deserialize_invalid{"bt dict consumption failed: hit the end of string before the dict was done"};
-    }
-    data.remove_prefix(1); // Back out of the dict, consume the "e"
-    return {start, static_cast<size_t>(std::distance(start, data.begin()))};
+    std::string_view consume_dict_data() {
+        auto start = data.begin();
+        if (data.size() < 2 || !is_dict()) throw bt_deserialize_invalid_type{"next bt value is not a dict"};
+        data.remove_prefix(1); // Descent into the dict, consumer the "d"
+        while (!is_finished()) {
+            consume_string_view(); // Key is always a string
+            if (!data.empty())
+                skip_value();
+            if (data.empty())
+                throw bt_deserialize_invalid{"bt dict consumption failed: hit the end of string before the dict was done"};
+        }
+        data.remove_prefix(1); // Back out of the dict, consume the "e"
+        return {start, static_cast<size_t>(std::distance(start, data.begin()))};
     }
 
     /// Shortcut for wrapping `consume_list_data()` in a new list consumer
     bt_list_consumer consume_list_consumer(){ return consume_list_data(); }
     /// Shortcut for wrapping `consume_dict_data()` in a new dict consumer
-  inline bt_dict_consumer consume_dict_consumer();
+    inline bt_dict_consumer consume_dict_consumer();
 };
 
 
@@ -766,18 +766,16 @@ class bt_dict_consumer : private bt_list_consumer {
     /// Throws exception if what should be a key isn't a string, or if the key consumes the entire
     /// data (i.e. requires that it be followed by something).  Returns true if the key was consumed
     /// (either now or previously and cached).
-  bool consume_key() 
-  {
+    bool consume_key() {
         if (key_.data())
+            return true;
+        if (data.empty()) throw bt_deserialize_invalid_type{"expected a key or dict end, found end of string"};
+        if (data[0] == 'e') return false;
+        key_ = bt_list_consumer::consume_string_view();
+        if (data.empty() || data[0] == 'e')
+            throw bt_deserialize_invalid{"dict key isn't followed by a value"};
         return true;
-    if (data.empty()) throw bt_deserialize_invalid_type{"expected a key or dict end, found end of string"};
-    if (data[0] == 'e') return false;
-    key_ = bt_list_consumer::consume_string_view();
-    if (data.empty() || data[0] == 'e')
-        throw bt_deserialize_invalid{"dict key isn't followed by a value"};
-    return true;
-
-  } 
+    }
 
     /// Clears the cached key and returns it.  Must have already called consume_key directly or
     /// indirectly via one of the `is_{...}` methods.
@@ -788,14 +786,14 @@ class bt_dict_consumer : private bt_list_consumer {
     }
 
 public:
-  bt_dict_consumer(std::string_view data_) {
+    bt_dict_consumer(std::string_view data_) {
         data = std::move(data_);
-    if (data.empty()) throw std::runtime_error{"Cannot create a bt_dict_consumer with an empty string_view"};
-    if (data.size() < 2 || data[0] != 'd')
-      throw std::runtime_error{
-          "Cannot create a bt_dict_consumer with non-dict data"};
-    data.remove_prefix(1);
-  }
+        if (data.empty()) throw std::runtime_error{"Cannot create a bt_dict_consumer with an empty string_view"};
+        if (data.size() < 2 || data[0] != 'd')
+            throw std::runtime_error{
+                "Cannot create a bt_dict_consumer with non-dict data"};
+        data.remove_prefix(1);
+    }
 
     /// Copy constructor.  Making a copy copies the current position so can be used for multipass
     /// iteration through a list.
@@ -831,12 +829,12 @@ public:
     /// Attempt to parse the next value as a string->string pair (and advance just past it).  Throws
     /// if the next value is not a string.
     std::pair<std::string_view, std::string_view> next_string() {
-      if (!is_string())
-        throw bt_deserialize_invalid_type{"expected a string, but found "s + data.front()};
-      std::pair<std::string_view, std::string_view> ret;
-      ret.second = bt_list_consumer::consume_string_view();
-      ret.first = flush_key();
-      return ret;
+        if (!is_string())
+            throw bt_deserialize_invalid_type{"expected a string, but found "s + data.front()};
+        std::pair<std::string_view, std::string_view> ret;
+        ret.second = bt_list_consumer::consume_string_view();
+        ret.first = flush_key();
+        return ret;
     }
 
     /// Attempts to parse the next value as an string->integer pair (and advance just past it).
@@ -973,7 +971,7 @@ inline bt_dict_consumer bt_list_consumer::consume_dict_consumer() { return consu
 
 namespace detail {
 
-/// Reads digits into an unsigned 64-bit int.  
+/// Reads digits into an unsigned 64-bit int.
 inline uint64_t extract_unsigned(std::string_view& s) {
     if (s.empty())
         throw bt_deserialize_invalid{"Expected 0-9 but found end of string"};
@@ -1040,7 +1038,7 @@ inline std::pair<uint64_t, bool> bt_deserialize_integer(std::string_view& s) {
 template struct bt_deserialize<int64_t>;
 template struct bt_deserialize<uint64_t>;
 
-  
+
 inline void bt_deserialize<bt_value, void>::operator()(std::string_view& s, bt_value& val) {
     if (s.size() < 2) throw bt_deserialize_invalid("Deserialization failed: end of string found where bt-encoded value expected");
 
