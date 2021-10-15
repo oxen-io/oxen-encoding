@@ -166,7 +166,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'oxenc', 'oxenc Documentation',
-     author, 'oxenc', 'bt and baseN decoder encoder library',
+     author, 'oxenc', 'Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library',
      'Miscellaneous'),
 ]
 

@@ -1,3 +1,3 @@
-# oxen encoding
+# oxenc
 
-library for all the bt and baseN encoding/decoding used in oxen's projects.
+Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library

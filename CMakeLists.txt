@@ -19,7 +19,7 @@ endif()
 
 project(oxenc
     VERSION 0.0.1
-    DESCRIPTION "oxenc - common bt and baseN encoding/decoding library"
+    DESCRIPTION "oxenc - Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library"
     LANGUAGES ${LANGS})
 
 
@@ -37,12 +37,68 @@ option(WITH_PYBIND "build pybind module" OFF)
 option(WITH_NODEJS "build nodejs native bindings" OFF)
 option(WITH_JNI "build jni bindings" OFF)
 
+
+include(GNUInstallDirs)
+
+message(STATUS "oxenc v${PROJECT_VERSION}")
+
+set(OXENC_LIBVERSION 0)
+
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(oxenc_IS_TOPLEVEL_PROJECT TRUE)
+else()
+    set(oxenc_IS_TOPLEVEL_PROJECT FALSE)
+endif()
+
+option(OXENC_BUILD_TESTS "Building and perform oxenc tests" ${oxenc_IS_TOPLEVEL_PROJECT})
+option(OXENC_INSTALL "Add oxenc headers to install target" ${oxenc_INSTALL_DEFAULT})
+
+
+configure_file(oxenc/version.h.in oxenc/version.h @ONLY)
+configure_file(liboxenc.pc.in liboxenc.pc @ONLY)
+
+
 add_library(oxenc INTERFACE)
 
 target_include_directories(oxenc
     INTERFACE
         $<INSTALL_INTERFACE:>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+
+export(
+    TARGETS oxenc
+    NAMESPACE oxenc::
+    FILE oxencTargets.cmake
+)
+
+if(OXENC_INSTALL)
+  install(
+    TARGETS oxenc
+    EXPORT oxencConfig
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+
+  install(
+    FILES
+    oxenc/base32z.h
+    oxenc/base64.h
+    oxenc/bt_serialize.h
+    oxenc/bt_value.h
+    oxenc/byte_type.h
+    oxenc/hex.h
+    oxenc/variant.h
+    ${CMAKE_CURRENT_BINARY_DIR}/oxenc/version.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/oxenc
+    )
+
+
+  install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/liboxenc.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    )
+endif()
+
 
 if(WITH_DOCS)
   add_subdirectory(docs)

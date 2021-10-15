@@ -1,6 +1,6 @@
-PROJECT_NAME           = "oxenenc"
+PROJECT_NAME           = "oxenc"
 PROJECT_NUMBER         = v@oxenc_VERSION@
-PROJECT_BRIEF          = "bt and baseN encoding/decoding library"
+PROJECT_BRIEF          = "Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library"
 OUTPUT_DIRECTORY       = @CMAKE_CURRENT_BINARY_DIR@
 STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ @PROJECT_BINARY_DIR@
 JAVADOC_AUTOBRIEF      = YES

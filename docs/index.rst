@@ -1,4 +1,4 @@
-Oxenc Internals
+OxEnc Internals
 ============================
 
 .. toctree::
