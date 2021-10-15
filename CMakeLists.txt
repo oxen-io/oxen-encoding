@@ -40,6 +40,11 @@ option(WITH_JNI "build jni bindings" OFF)
 add_library(oxenenc
   oxenenc/bt_serialize.cpp)
 
+target_include_directories(oxenenc
+    PUBLIC
+        $<INSTALL_INTERFACE:>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+
 
 if(WITH_DOCS)
   add_subdirectory(docs)
