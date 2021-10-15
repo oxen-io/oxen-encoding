@@ -128,10 +128,10 @@ TEST_CASE("bt_value deserialization", "[bt][deserialization][bt_value]") {
     REQUIRE( var::get<int64_t>(dna2) == -42 );
     REQUIRE_THROWS( var::get<int64_t>(dna1) );
     REQUIRE_THROWS( var::get<uint64_t>(dna2) );
-    REQUIRE( oxenenc::get_int<int>(dna1) == 42 );
-    REQUIRE( oxenenc::get_int<int>(dna2) == -42 );
-    REQUIRE( oxenenc::get_int<unsigned>(dna1) == 42 );
-    REQUIRE_THROWS( oxenenc::get_int<unsigned>(dna2) );
+    REQUIRE( oxenc::get_int<int>(dna1) == 42 );
+    REQUIRE( oxenc::get_int<int>(dna2) == -42 );
+    REQUIRE( oxenc::get_int<unsigned>(dna1) == 42 );
+    REQUIRE_THROWS( oxenc::get_int<unsigned>(dna2) );
 
     bt_value x = bt_deserialize<bt_value>("d3:barle3:foold1:ali1ei2ei3ee1:bleed1:cli-5ei4eeeee");
     REQUIRE( std::holds_alternative<bt_dict>(x) );
@@ -149,9 +149,9 @@ TEST_CASE("bt_value deserialization", "[bt][deserialization][bt_value]") {
     bt_list& foo1b = var::get<bt_list>(foo1.at("b"));
     bt_list& foo2c = var::get<bt_list>(foo2.at("c"));
     std::list<int> foo1a_vals, foo1b_vals, foo2c_vals;
-    for (auto& v : foo1a) foo1a_vals.push_back(oxenenc::get_int<int>(v));
-    for (auto& v : foo1b) foo1b_vals.push_back(oxenenc::get_int<int>(v));
-    for (auto& v : foo2c) foo2c_vals.push_back(oxenenc::get_int<int>(v));
+    for (auto& v : foo1a) foo1a_vals.push_back(oxenc::get_int<int>(v));
+    for (auto& v : foo1b) foo1b_vals.push_back(oxenc::get_int<int>(v));
+    for (auto& v : foo2c) foo2c_vals.push_back(oxenc::get_int<int>(v));
     REQUIRE( foo1a_vals == std::list{{1,2,3}} );
     REQUIRE( foo1b_vals == std::list<int>{} );
     REQUIRE( foo2c_vals == std::list{{-5, 4}} );

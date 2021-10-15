@@ -1,7 +1,7 @@
-OxenEnc Internals
+Oxenc Internals
 ============================
 
 .. toctree::
    :maxdepth: 2
               
-   api/oxenenc
+   api/oxenc

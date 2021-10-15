@@ -17,9 +17,9 @@ if(CCACHE_PROGRAM)
   endforeach()
 endif()
 
-project(oxenenc
+project(oxenc
     VERSION 0.0.1
-    DESCRIPTION "oxenenc - common bt and baseN encoding/decoding library"
+    DESCRIPTION "oxenc - common bt and baseN encoding/decoding library"
     LANGUAGES ${LANGS})
 
 
@@ -37,14 +37,12 @@ option(WITH_PYBIND "build pybind module" OFF)
 option(WITH_NODEJS "build nodejs native bindings" OFF)
 option(WITH_JNI "build jni bindings" OFF)
 
-add_library(oxenenc
-  oxenenc/bt_serialize.cpp)
+add_library(oxenc INTERFACE)
 
-target_include_directories(oxenenc
-    PUBLIC
+target_include_directories(oxenc
+    INTERFACE
         $<INSTALL_INTERFACE:>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
-
 
 if(WITH_DOCS)
   add_subdirectory(docs)

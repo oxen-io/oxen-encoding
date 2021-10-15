@@ -1,7 +1,10 @@
 #pragma once
 #include <catch2/catch.hpp>
 #include <unordered_map>
-#include "oxenenc/oxenenc.h"
+#include "oxenc/hex.h"
+#include "oxenc/base32z.h"
+#include "oxenc/base64.h"
+#include "oxenc/bt_serialize.h"
 
 
-using namespace oxenenc;
+using namespace oxenc;

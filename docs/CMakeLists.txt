@@ -9,23 +9,23 @@ if (NOT SPHINX_BUILD)
     return()
   endif()
   
-set(oxenenc_doc_sources "${DOCS_SRC}")
-string(REPLACE ";" " " oxenec_doc_sources_spaced "${oxenenc_doc_sources}")
+set(oxenc_doc_sources "${DOCS_SRC}")
+string(REPLACE ";" " " oxenec_doc_sources_spaced "${oxenc_doc_sources}")
 
 add_custom_command(
     OUTPUT doxyxml/index.xml
     COMMAND ${DOXYGEN} Doxyfile
     DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-        ${oxenenc_doc_sources}
+        ${oxenc_doc_sources}
 )
 
 add_custom_command(
     OUTPUT html/index.html
     COMMAND ${SPHINX_BUILD} -j auto
-        -Dbreathe_projects.oxenenc=${CMAKE_CURRENT_BINARY_DIR}/doxyxml
-        -Dversion=${oxenenc_VERSION} -Drelease=${oxenenc_VERSION}
-        -Aversion=${oxenenc_VERSION} -Aversions=${oxenenc_VERSION_MAJOR},${oxenenc_VERSION_MINOR},${oxenenc_VERSION_PATCH}
+        -Dbreathe_projects.oxenc=${CMAKE_CURRENT_BINARY_DIR}/doxyxml
+        -Dversion=${oxenc_VERSION} -Drelease=${oxenc_VERSION}
+        -Aversion=${oxenc_VERSION} -Aversions=${oxenc_VERSION_MAJOR},${oxenc_VERSION_MINOR},${oxenc_VERSION_PATCH}
         -b html
         ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/html
     DEPENDS

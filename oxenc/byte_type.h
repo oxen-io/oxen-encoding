@@ -6,7 +6,7 @@
 #include <iterator>
 #include <type_traits>
 
-namespace oxenenc::detail {
+namespace oxenc::detail {
 
 // Fallback - we just try a char
 template <typename OutputIt, typename = void>

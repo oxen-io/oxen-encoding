@@ -19,7 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'oxenenc'
+project = 'oxenc'
 copyright = '2021, Oxen Project'
 author = 'Oxen Project'
 
@@ -41,15 +41,15 @@ release = ''
 # ones.
 
 extensions = ['breathe', 'exhale']
-breathe_projects = { "oxenenc": "@CMAKE_CURRENT_BINARY_DIR@/doxyxml/" }
-breathe_default_project = "oxenenc"
+breathe_projects = { "oxenc": "@CMAKE_CURRENT_BINARY_DIR@/doxyxml/" }
+breathe_default_project = "oxenc"
 breathe_domain_by_extension = {"h" : "cpp", "hpp": "cpp"}
 
 exhale_args = {
     # These arguments are required
     "containmentFolder":     "./api",
-    "rootFileName":          "oxenenc.rst",
-    "rootFileTitle":         "oxenenc internals",
+    "rootFileName":          "oxenc.rst",
+    "rootFileTitle":         "oxenc internals",
     "doxygenStripFromPath":  "..",
     # Suggested optional arguments
     "createTreeView":        True,
@@ -117,7 +117,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'oxenencdoc'
+htmlhelp_basename = 'oxencdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -144,7 +144,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'oxenenc.tex', 'OxenEnc Documentation',
+    (master_doc, 'oxenc.tex', 'Oxenc Documentation',
      'Oxen Project', 'manual'),
 ]
 
@@ -154,7 +154,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'oxenenc', 'OxenEnc Documentation',
+    (master_doc, 'oxenc', 'Oxenc Documentation',
      [author], 1)
 ]
 
@@ -165,8 +165,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'oxenenc', 'oxenenc Documentation',
-     author, 'oxenenc', 'bt and baseN decoder encoder library',
+    (master_doc, 'oxenc', 'oxenc Documentation',
+     author, 'oxenc', 'bt and baseN decoder encoder library',
      'Miscellaneous'),
 ]
 
