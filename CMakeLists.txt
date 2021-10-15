@@ -38,7 +38,7 @@ option(WITH_NODEJS "build nodejs native bindings" OFF)
 option(WITH_JNI "build jni bindings" OFF)
 
 add_library(oxenenc
-  oxenenc/bt_value.cpp)
+  oxenenc/bt_serialize.cpp)
 
 
 if(WITH_DOCS)
