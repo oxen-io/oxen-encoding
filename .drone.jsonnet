@@ -25,13 +25,15 @@ local debian_pipeline(name, image, arch='amd64', deps='g++', cmake_extra='', bui
     ]
 };
 
+local docker_base = 'registry.oxen.rocks/lokinet-ci-'
+
 [
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8',
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8'),
-    debian_pipeline("Debian sid (amd64)", "debian:sid"),
-    debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian sid/clang-13 (amd64)", "debian:sid", deps='clang-13 lld-13',
+    debian_pipeline("Debian sid (amd64)", docker_base+'debian-sid'),
+    debian_pipeline("Debian sid/Debug (amd64)", docker_base+'debian-sid', build_type='Debug'),
+    debian_pipeline("Debian sid/clang-13 (amd64)", docker_base+'debian-sid-clang', deps='clang-13 lld-13',
                     cmake_extra='-DCMAKE_C_COMPILER=clang-13 -DCMAKE_CXX_COMPILER=clang++-13 ' + std.join(' ', [
                         '-DCMAKE_'+type+'_LINKER_FLAGS=-fuse-ld=lld-13' for type in ['EXE','MODULE','SHARED','STATIC']])),
     debian_pipeline("Debian buster (amd64)", "debian:buster"),
