@@ -25,7 +25,7 @@ local debian_pipeline(name, image, arch='amd64', deps='g++', cmake_extra='', bui
     ]
 };
 
-local docker_base = 'registry.oxen.rocks/lokinet-ci-'
+local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
 [
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
