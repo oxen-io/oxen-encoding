@@ -31,9 +31,9 @@ local debian_pipeline(name, image, arch='amd64', deps='g++', cmake_extra='', bui
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8'),
     debian_pipeline("Debian sid (amd64)", "debian:sid"),
     debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian sid/clang-11 (amd64)", "debian:sid", deps='clang-11 lld-11',
-                    cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 ' + std.join(' ', [
-                        '-DCMAKE_'+type+'_LINKER_FLAGS=-fuse-ld=lld-11' for type in ['EXE','MODULE','SHARED','STATIC']])),
+    debian_pipeline("Debian sid/clang-13 (amd64)", "debian:sid", deps='clang-13 lld-13',
+                    cmake_extra='-DCMAKE_C_COMPILER=clang-13 -DCMAKE_CXX_COMPILER=clang++-13 ' + std.join(' ', [
+                        '-DCMAKE_'+type+'_LINKER_FLAGS=-fuse-ld=lld-13' for type in ['EXE','MODULE','SHARED','STATIC']])),
     debian_pipeline("Debian buster (amd64)", "debian:buster"),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster"),
     debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8',
