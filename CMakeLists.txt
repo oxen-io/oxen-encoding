@@ -83,6 +83,8 @@ if(OXENC_INSTALL)
     FILES
     oxenc/base32z.h
     oxenc/base64.h
+    oxenc/bt.h
+    oxenc/bt_producer.h
     oxenc/bt_serialize.h
     oxenc/bt_value.h
     oxenc/byte_type.h
