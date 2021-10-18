@@ -52,7 +52,7 @@ else()
 endif()
 
 option(OXENC_BUILD_TESTS "Building and perform oxenc tests" ${oxenc_IS_TOPLEVEL_PROJECT})
-option(OXENC_INSTALL "Add oxenc headers to install target" ${oxenc_INSTALL_DEFAULT})
+option(OXENC_INSTALL "Add oxenc headers to install target" ${oxenc_IS_TOPLEVEL_PROJECT})
 
 
 configure_file(oxenc/version.h.in oxenc/version.h @ONLY)

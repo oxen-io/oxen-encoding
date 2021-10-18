@@ -4,7 +4,7 @@
 #include "oxenc/hex.h"
 #include "oxenc/base32z.h"
 #include "oxenc/base64.h"
-#include "oxenc/bt_serialize.h"
+#include "oxenc/bt.h"
 
 
 using namespace oxenc;
