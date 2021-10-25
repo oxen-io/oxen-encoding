@@ -6,7 +6,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <utility>
-#include <variant>
+#include "variant.h"
 
 namespace oxenc {
 
@@ -21,7 +21,7 @@ namespace oxenc {
 /// space (for int types up to 64-bit); we return a pointer one past the last char written.
     template <typename IntType>
     char* apple_to_chars10(char* buf, IntType val) {
-        static_assert(std::is_integral_v<IntType> && sizeof(IntType) <= 64);
+        static_assert(std::is_integral_v<IntType> && sizeof(IntType) <= 8);
         if constexpr (std::is_signed_v<IntType>) {
             if (val < 0) {
                 buf[0] = '-';
@@ -51,7 +51,7 @@ namespace oxenc {
 /// This is essentially the reverse of bt_list_consumer: where it lets you stream-parse a buffer,
 /// this class lets you build directly into a buffer that you own.
 ///
-/// Out-of-buffer-space errors throw 
+/// Out-of-buffer-space errors throw
     class bt_list_producer {
         friend class bt_dict_producer;
 
@@ -80,45 +80,14 @@ namespace oxenc {
         // then we append without moving the buffer pointer (primarily when we append intermediate `e`s
         // that we will overwrite if more data is added).  This means that the next write will overwrite
         // whatever was previously written by an `advance=false` call.
-        void buffer_append(std::string_view d, bool advance = true)
-        {
-            var::visit(
-                [d, advance, this](auto &x) {
-                    if constexpr (std::is_same_v<buf_span &, decltype(x)>) {
-                        size_t avail = std::distance(x.first, x.second);
-                        if (d.size() > avail)
-                            throw std::length_error{"Cannot write bt_producer: buffer size exceeded"};
-                        std::copy(d.begin(), d.end(), x.first);
-                        to = x.first + d.size();
-                        if (advance)
-                            x.first += d.size();
-                    } else {
-                        x->buffer_append(d, advance);
-                    }
-                },
-                data);
-        }
+        void buffer_append(std::string_view d, bool advance = true);
 
         // Appends the 'e's into the buffer to close off open sublists/dicts *without* advancing the
         // buffer position; we do this after each append so that the buffer always contains valid
         // encoded data, even while we are still appending to it, and so that appending something raises
         // a length_error if appending it would not leave enough space for the required e's to close the
         // open list(s)/dict(s).
-        void append_intermediate_ends(size_t count = 1)
-        {
-            static constexpr std::string_view eee = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"sv;
-            return var::visit([this, count](auto& x) mutable {
-                if constexpr (std::is_same_v<buf_span&, decltype(x)>) {
-                    for (; count > eee.size(); count -= eee.size())
-                        buffer_append(eee, false);
-                    buffer_append(eee.substr(0, count), false);
-                } else {
-                    // x is a parent pointer
-                    x->append_intermediate_ends(count + 1);
-                    to = x->to - 1; // Our `to` should be one 'e' before our parent's `to`.
-                }
-            }, data);
-        } 
+        void append_intermediate_ends(size_t count = 1);
 
         // Writes an integer to the given buffer; returns the one-past-the-data pointer.  Up to 20 bytes
         // will be written and must be available in buf.  Used for both string and integer
@@ -149,14 +118,13 @@ namespace oxenc {
         }
 
         // Appends a string value, but does not call append_intermediate_ends()
-        void append_impl(std::string_view s)
-        {
+        void append_impl(std::string_view s) {
             char buf[21]{}; // length + ':'
             auto *ptr = write_integer(s.size(), buf);
             *ptr++ = ':';
             buffer_append({buf, static_cast<size_t>(ptr - buf)});
             buffer_append(s);
-        } 
+        }
 
     public:
         bt_list_producer() = delete;
@@ -165,23 +133,6 @@ namespace oxenc {
         bt_list_producer& operator=(bt_list_producer&&) = delete;
         inline bt_list_producer(bt_list_producer&& other);
 
-        ~bt_list_producer()
-        {
-            var::visit(
-                [this](auto &x) {
-                    if constexpr (!std::is_same_v<buf_span &, decltype(x)>) {
-                        if (!x)
-                            return;
-                        assert(!has_child);
-                        assert(x->has_child);
-                        x->has_child = false;
-                        // We've already written the intermediate 'e', so just increment
-                        // the buffer to finalize it.
-                        buffer.first++;
-                    }
-                },
-                data);
-        }
         /// Constructs a list producer that writes into the range [begin, end).  If a write would go
         /// beyond the end of the buffer an exception is raised.  Note that this will happen during
         /// construction if the given buffer is not large enough to contain the `le` encoding of an
@@ -191,6 +142,8 @@ namespace oxenc {
         /// Constructs a list producer that writes into the range [begin, begin+size).  If a write would
         /// go beyond the end of the buffer an exception is raised.
         bt_list_producer(char* begin, size_t len) : bt_list_producer{begin, begin + len} {}
+
+        ~bt_list_producer();
 
         /// Returns a string_view into the currently serialized data buffer.  Note that the returned
         /// view includes the `e` list end serialization markers which will be overwritten if the list
@@ -273,7 +226,7 @@ namespace oxenc {
 
         bt_dict_producer(bt_list_producer* parent) : bt_list_producer{parent, "d"sv} {}
         bt_dict_producer(bt_dict_producer* parent) : bt_list_producer{parent, "d"sv} {}
-    
+
         // Checks a just-written key string to make sure it is monotonically increasing from the last
         // key.  Does nothing in a release build.
 #ifdef NDEBUG
@@ -281,12 +234,11 @@ namespace oxenc {
 #else
         // String view into the buffer where we wrote the previous key.
         std::string_view last_key;
-        void check_incrementing_key(size_t size)
-        {
+        void check_incrementing_key(size_t size) {
             std::string_view this_key{buffer.first - size, size};
             assert(!last_key.data() || this_key > last_key);
             last_key = this_key;
-        } 
+        }
 #endif
 
     public:
@@ -354,13 +306,12 @@ namespace oxenc {
         ///
         /// If doing more complex lifetime management, take care not to allow the child instance to
         /// outlive the parent.
-        bt_dict_producer append_dict(std::string_view key)
-        {
+        bt_dict_producer append_dict(std::string_view key) {
             if (has_child) throw std::logic_error{"Cannot call append_dict while another nested list/dict is active"};
             append_impl(key);
             check_incrementing_key(key.size());
             return bt_dict_producer{this};
-        } 
+        }
 
         /// Appends a list to this dict with the given key (which must be ascii-larger than the previous
         /// key).  Returns a new bt_list_producer that references the parent dict.  The parent cannot be
@@ -379,21 +330,21 @@ namespace oxenc {
         }
     };
 
-    bt_list_producer::bt_list_producer(bt_list_producer* parent, std::string_view prefix)
+    inline bt_list_producer::bt_list_producer(bt_list_producer* parent, std::string_view prefix)
         : data{parent}, buffer{parent->buffer}, from{buffer.first} {
         parent->has_child = true;
         buffer_append(prefix);
         append_intermediate_ends();
     }
 
-    bt_list_producer::bt_list_producer(bt_dict_producer* parent, std::string_view prefix)
+    inline bt_list_producer::bt_list_producer(bt_dict_producer* parent, std::string_view prefix)
         : data{parent}, buffer{parent->buffer}, from{buffer.first} {
         parent->has_child = true;
         buffer_append(prefix);
         append_intermediate_ends();
     }
 
-    bt_list_producer::bt_list_producer(bt_list_producer&& other)
+    inline bt_list_producer::bt_list_producer(bt_list_producer&& other)
         : data{std::move(other.data)}, buffer{other.buffer}, from{other.from}, to{other.to} {
         if (other.has_child) throw std::logic_error{"Cannot move bt_list/dict_producer with active sublists/subdicts"};
         var::visit([](auto& x) {
@@ -402,21 +353,70 @@ namespace oxenc {
         }, other.data);
     }
 
+    inline void bt_list_producer::buffer_append(std::string_view d, bool advance) {
+        var::visit(
+            [d, advance, this](auto& x) {
+                if constexpr (std::is_same_v<buf_span&, decltype(x)>) {
+                    size_t avail = std::distance(x.first, x.second);
+                    if (d.size() > avail)
+                        throw std::length_error{"Cannot write bt_producer: buffer size exceeded"};
+                    std::copy(d.begin(), d.end(), x.first);
+                    to = x.first + d.size();
+                    if (advance)
+                        x.first += d.size();
+                } else {
+                    x->buffer_append(d, advance);
+                }
+            },
+            data);
+    }
 
-    bt_list_producer::bt_list_producer(char* begin, char* end)
+    inline void bt_list_producer::append_intermediate_ends(size_t count) {
+        static constexpr std::string_view eee = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"sv;
+        return var::visit([this, count](auto& x) mutable {
+            if constexpr (std::is_same_v<buf_span&, decltype(x)>) {
+                for (; count > eee.size(); count -= eee.size())
+                    buffer_append(eee, false);
+                buffer_append(eee.substr(0, count), false);
+            } else {
+                // x is a parent pointer
+                x->append_intermediate_ends(count + 1);
+                to = x->to - 1; // Our `to` should be one 'e' before our parent's `to`.
+            }
+        }, data);
+    }
+
+    inline bt_list_producer::~bt_list_producer() {
+        var::visit(
+            [this](auto& x) {
+                if constexpr (!std::is_same_v<buf_span&, decltype(x)>) {
+                    if (!x)
+                        return;
+                    assert(!has_child);
+                    assert(x->has_child);
+                    x->has_child = false;
+                    // We've already written the intermediate 'e', so just increment
+                    // the buffer to finalize it.
+                    buffer.first++;
+                }
+            },
+            data);
+    }
+
+    inline bt_list_producer::bt_list_producer(char* begin, char* end)
         : data{buf_span{begin, end}}, buffer{*std::get_if<buf_span>(&data)}, from{buffer.first} {
         buffer_append("l"sv);
         append_intermediate_ends();
     }
 
-    bt_list_producer bt_list_producer::append_list() {
+    inline bt_list_producer bt_list_producer::append_list() {
         if (has_child) throw std::logic_error{"Cannot call append_list while another nested list/dict is active"};
         return bt_list_producer{this};
     }
 
-    bt_dict_producer bt_list_producer::append_dict() {
+    inline bt_dict_producer bt_list_producer::append_dict() {
         if (has_child) throw std::logic_error{"Cannot call append_dict while another nested list/dict is active"};
         return bt_dict_producer{this};
     }
-    
+
 } // namespace oxenc

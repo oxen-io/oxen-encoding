@@ -5,8 +5,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
-set(LANGS CXX)
-
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
   foreach(lang ${LANGS})
@@ -18,32 +16,23 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(oxenc
-    VERSION 0.0.1
+    VERSION 1.0.0
     DESCRIPTION "oxenc - Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library"
-    LANGUAGES ${LANGS})
+    LANGUAGES CXX)
 
 
 find_package(PkgConfig REQUIRED)
 
-include(CheckCXXSourceCompiles)
-include(CheckLibraryExists)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(WITH_DOCS "build documentation" ON)
 option(WITH_TESTS "build tests" ON)
-option(WITH_PYBIND "build pybind module" OFF)
-option(WITH_NODEJS "build nodejs native bindings" OFF)
-option(WITH_JNI "build jni bindings" OFF)
-
 
 include(GNUInstallDirs)
 
 message(STATUS "oxenc v${PROJECT_VERSION}")
-
-set(OXENC_LIBVERSION 0)
-
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set(oxenc_IS_TOPLEVEL_PROJECT TRUE)
@@ -97,25 +86,13 @@ if(OXENC_INSTALL)
 
   install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/liboxenc.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pkgconfig
     )
 endif()
 
 
 if(WITH_DOCS)
   add_subdirectory(docs)
-endif()
-
-if(WITH_PYBIND)
-  add_subdirectory(pybind)
-endif()
-
-if(WITH_NODEJS)
-  add_subdirectory(nodejs)
-endif()
-
-if(WITH_JNI)
-  add_subdirectory(jni)
 endif()
 
 if(WITH_TESTS)
