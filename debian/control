@@ -1,7 +1,7 @@
 Source: oxen-encoding
 Priority: optional
 Maintainer: Jason Rhinelander <jason@imaginary.ca>
-Build-Depends: debhelper-compat (= 11), cmake (>= 3.5), g++
+Build-Depends: debhelper-compat (= 11), cmake (>= 3.5), g++-8
 Standards-Version: 4.4.1
 Section: libs
 Homepage: https://github.com/oxen-io/oxen-mq

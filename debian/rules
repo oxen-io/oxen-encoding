@@ -2,3 +2,7 @@
 
 %:
 	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8

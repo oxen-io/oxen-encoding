@@ -1,5 +1,5 @@
-local distro = 'sid';
-local distro_name = 'Debian sid';
+local distro = 'bionic';
+local distro_name = 'Ubuntu 18.04';
 local distro_docker = 'registry.oxen.rocks/lokinet-ci-deb-builder-' + distro;
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
@@ -20,7 +20,7 @@ local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
         apt_get_quiet + ' update',
         apt_get_quiet + ' install -y eatmydata',
         'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git-buildpackage devscripts equivs ccache openssh-client',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git-buildpackage devscripts equivs ccache openssh-client ca-certificates',
         'cd debian',
         'eatmydata mk-build-deps -i -r --tool="' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y" control',
         'cd ..',

@@ -1,4 +1,4 @@
-oxen-encoding (1.0.0-1) sid; urgency=medium
+oxen-encoding (1.0.0-1~ubuntu1804) bionic; urgency=medium
 
   * Initial release
 
