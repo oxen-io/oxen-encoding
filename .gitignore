@@ -1,4 +1,6 @@
-build/
-build-*/
+/build/
+/build-*/
 *~
-.ccls-cache/
+/.ccls-cache/
+/.cache
+/compile_commands.json
