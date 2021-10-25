@@ -1,5 +1,5 @@
-local distro = 'sid';
-local distro_name = 'Debian sid';
+local distro = 'bullseye';
+local distro_name = 'Debian bullseye';
 local distro_docker = 'registry.oxen.rocks/lokinet-ci-deb-builder-' + distro;
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
