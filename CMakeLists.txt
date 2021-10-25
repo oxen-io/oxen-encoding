@@ -34,9 +34,6 @@ include(GNUInstallDirs)
 
 message(STATUS "oxenc v${PROJECT_VERSION}")
 
-set(OXENC_LIBVERSION 0)
-
-
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set(oxenc_IS_TOPLEVEL_PROJECT TRUE)
 else()
@@ -89,7 +86,7 @@ if(OXENC_INSTALL)
 
   install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/liboxenc.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pkgconfig
     )
 endif()
 
