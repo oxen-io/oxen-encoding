@@ -2,3 +2,7 @@
 
 %:
 	dh $@
+
+# Ubuntu's default zstd compression for control, data is not well supported outside Ubuntu:
+override_dh_builddeb:
+	dh_builddeb -- -Zxz
