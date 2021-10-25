@@ -1,0 +1,16 @@
+Source: oxen-encoding
+Priority: optional
+Maintainer: Jason Rhinelander <jason@imaginary.ca>
+Build-Depends: debhelper-compat (= 11), cmake (>= 3.5), g++
+Standards-Version: 4.4.1
+Section: libs
+Homepage: https://github.com/oxen-io/oxen-mq
+
+Package: liboxenc-dev
+Section: libdevel
+Architecture: all
+Depends: ${misc:Depends}
+Description: oxenc - Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library
+ This C++17 library contains fast encoding and decoding support for hex,
+ base32z and base64 character encoding, and a robust C++ interface to
+ bittorrent's bencode data structure encoding.
