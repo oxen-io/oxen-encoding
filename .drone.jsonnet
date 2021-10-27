@@ -1,6 +1,6 @@
 local distro = 'bionic';
-local distro_name = 'Ubuntu 18.04';
-local distro_docker = 'registry.oxen.rocks/lokinet-ci-deb-builder-' + distro;
+local distro_name = 'Ubuntu ' + distro;
+local distro_docker = 'registry.oxen.rocks/lokinet-ci-ubuntu-' + distro + '-builder';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
