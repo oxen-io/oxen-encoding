@@ -9,6 +9,7 @@ set(TEST_SRC
     main.cpp
     test_bt.cpp
     test_encoding.cpp
+    test_endian.cpp
 )
 
 add_executable(tests ${TEST_SRC})
