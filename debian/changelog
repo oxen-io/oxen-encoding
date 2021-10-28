@@ -1,3 +1,11 @@
+oxen-encoding (1.0.1-1~ubuntu2110) impish; urgency=medium
+
+  * Use xz for compression on impish
+  * use prebuilt builder ci
+  * Add endian conversion functions
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:00:20 -0300
+
 oxen-encoding (1.0.0-1~ubuntu2110) impish; urgency=medium
 
   * Initial release
