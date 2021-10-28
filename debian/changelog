@@ -1,3 +1,9 @@
+oxen-encoding (1.0.1-2~deb11) bullseye; urgency=medium
+
+  * Add missing endian header
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:15:59 -0300
+
 oxen-encoding (1.0.1-1~deb11) bullseye; urgency=medium
 
   * use prebuilt builder ci
