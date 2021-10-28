@@ -1,3 +1,10 @@
+oxen-encoding (1.0.1-1~deb10) buster; urgency=medium
+
+  * use prebuilt builder ci
+  * Add endian conversion functions
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:00:09 -0300
+
 oxen-encoding (1.0.0-1~deb10) buster; urgency=medium
 
   * Initial release
