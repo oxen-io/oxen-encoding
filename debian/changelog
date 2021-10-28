@@ -1,3 +1,10 @@
+oxen-encoding (1.0.1-1~ubuntu2104) hirsute; urgency=medium
+
+  * use prebuilt builder ci
+  * Add endian conversion functions
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:00:18 -0300
+
 oxen-encoding (1.0.0-1~ubuntu2104) hirsute; urgency=medium
 
   * Initial release
