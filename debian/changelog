@@ -1,3 +1,10 @@
+oxen-encoding (1.0.1-1~ubuntu2004) focal; urgency=medium
+
+  * use prebuilt builder ci
+  * Add endian conversion functions
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:00:14 -0300
+
 oxen-encoding (1.0.0-1~ubuntu2004) focal; urgency=medium
 
   * Initial release
