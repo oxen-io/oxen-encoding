@@ -1,3 +1,9 @@
+oxen-encoding (1.0.1-2~deb10) buster; urgency=medium
+
+  * Add missing endian header
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:15:58 -0300
+
 oxen-encoding (1.0.1-1~deb10) buster; urgency=medium
 
   * use prebuilt builder ci
