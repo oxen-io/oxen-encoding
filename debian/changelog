@@ -1,3 +1,9 @@
+oxen-encoding (1.0.1-2~ubuntu2104) hirsute; urgency=medium
+
+  * Add missing endian header
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Oct 2021 14:16:04 -0300
+
 oxen-encoding (1.0.1-1~ubuntu2104) hirsute; urgency=medium
 
   * use prebuilt builder ci
