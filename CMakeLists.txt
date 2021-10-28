@@ -75,6 +75,7 @@ if(OXENC_INSTALL)
     oxenc/bt_serialize.h
     oxenc/bt_value.h
     oxenc/byte_type.h
+    oxenc/endian.h
     oxenc/hex.h
     oxenc/variant.h
     ${CMAKE_CURRENT_BINARY_DIR}/oxenc/version.h
