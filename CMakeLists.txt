@@ -26,7 +26,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(WITH_DOCS "build documentation" ON)
-option(WITH_TESTS "build tests" ON)
 
 include(GNUInstallDirs)
 
@@ -90,10 +89,10 @@ if(OXENC_INSTALL)
 endif()
 
 
-if(WITH_DOCS)
+if(WITH_DOCS AND ${oxenc_IS_TOPLEVEL_PROJECT})
   add_subdirectory(docs)
 endif()
 
-if(WITH_TESTS)
+if(OXENC_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
