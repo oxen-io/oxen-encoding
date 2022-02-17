@@ -25,8 +25,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(WITH_DOCS "build documentation" ON)
-
 include(GNUInstallDirs)
 
 message(STATUS "oxenc v${PROJECT_VERSION}")
@@ -38,6 +36,7 @@ else()
 endif()
 
 option(OXENC_BUILD_TESTS "Building and perform oxenc tests" ${oxenc_IS_TOPLEVEL_PROJECT})
+option(OXENC_BUILD_DOCS "Build oxenc documentation" ${oxenc_IS_TOPLEVEL_PROJECT})
 option(OXENC_INSTALL "Add oxenc headers to install target" ${oxenc_IS_TOPLEVEL_PROJECT})
 
 
@@ -89,7 +88,7 @@ if(OXENC_INSTALL)
 endif()
 
 
-if(WITH_DOCS AND ${oxenc_IS_TOPLEVEL_PROJECT})
+if(OXENC_BUILD_DOCS)
   add_subdirectory(docs)
 endif()
 
