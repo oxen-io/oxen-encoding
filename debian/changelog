@@ -1,3 +1,9 @@
+oxen-encoding (1.0.1-2~ubuntu2204) jammy; urgency=medium
+
+  * Initial deb for jammy.
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Mar 2022 21:14:41 -0300
+
 oxen-encoding (1.0.1-2~ubuntu2110) impish; urgency=medium
 
   * Add missing endian header
