@@ -28,6 +28,8 @@ namespace oxenc {
 #elif !defined(__BIG_ENDIAN__) && defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) \
     && __BYTE_ORDER == __BIG_ENDIAN
 #  define __BIG_ENDIAN__
+#elif defined(_WIN32)
+#  define __LITTLE_ENDIAN__
 #elif !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
 #  error "Error: don't know which endian this is"
 #endif
