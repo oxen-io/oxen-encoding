@@ -1,3 +1,20 @@
+oxen-encoding (1.0.2-1~deb11) bullseye; urgency=medium
+
+  [ Thomas Winget ]
+  * make CMakeLists work using this as a submodule/dependency
+
+  [ Jason Rhinelander ]
+  * Allow building docs even when a submodule
+
+  [ majestrate ]
+  * add endian awareness for windows
+
+  [ Jason Rhinelander ]
+  * Add win32 ci build/test
+  * Bump version
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 28 Apr 2022 14:26:29 -0300
+
 oxen-encoding (1.0.1-2~deb11) bullseye; urgency=medium
 
   * Add missing endian header
