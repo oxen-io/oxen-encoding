@@ -96,4 +96,33 @@ local full_llvm(version) = debian_pipeline(
       },
     ],
   },
+  {
+    kind: 'pipeline',
+    type: 'docker',
+    name: 'Windows (amd64)',
+    platform: { arch: 'amd64' },
+    steps: [
+      submodules,
+      {
+        name: 'build',
+        image: docker_base + 'debian-win32-cross',
+        pull: 'always',
+        commands: [
+          'echo "Building on ${DRONE_STAGE_MACHINE}"',
+          'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
+          apt_get_quiet + ' update',
+          apt_get_quiet + ' install -y eatmydata',
+          'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y build-essential cmake ninja-build ccache g++-mingw-w64-x86-64-posix wine64',
+          'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
+          'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
+          'mkdir build',
+          'cd build',
+          'cmake .. -G Ninja -DCMAKE_CXX_COMPILER=/usr/bin/x86_64-w64-mingw32-g++-posix -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_CXX_COMPILER_LAUNCHER=ccache',
+          'ninja -v',
+          'export WINEPATH="$$(dirname $$(/usr/bin/x86_64-w64-mingw32-g++-posix -print-libgcc-file-name));/usr/x86_64-w64-mingw32/lib"',
+          'wine64-stable ./tests/tests.exe --use-colour yes',
+        ],
+      },
+    ],
+  },
 ]
