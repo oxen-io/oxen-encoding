@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(oxenc
-    VERSION 1.0.1
+    VERSION 1.0.2
     DESCRIPTION "oxenc - Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library"
     LANGUAGES CXX)
 
@@ -24,9 +24,6 @@ project(oxenc
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-option(WITH_DOCS "build documentation" ON)
-option(WITH_TESTS "build tests" ON)
 
 include(GNUInstallDirs)
 
@@ -39,6 +36,7 @@ else()
 endif()
 
 option(OXENC_BUILD_TESTS "Building and perform oxenc tests" ${oxenc_IS_TOPLEVEL_PROJECT})
+option(OXENC_BUILD_DOCS "Build oxenc documentation" ${oxenc_IS_TOPLEVEL_PROJECT})
 option(OXENC_INSTALL "Add oxenc headers to install target" ${oxenc_IS_TOPLEVEL_PROJECT})
 
 
@@ -90,10 +88,10 @@ if(OXENC_INSTALL)
 endif()
 
 
-if(WITH_DOCS)
+if(OXENC_BUILD_DOCS)
   add_subdirectory(docs)
 endif()
 
-if(WITH_TESTS)
+if(OXENC_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
