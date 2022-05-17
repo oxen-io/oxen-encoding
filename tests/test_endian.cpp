@@ -168,3 +168,39 @@ TEST_CASE("native to big", "[endian][big]") {
     write_host_as_big(u64, buf);
     CHECK( buffer.substr(0, 8) == "\x01\x23\x45\x67\x89\xab\xcd\xef" );
 }
+
+TEST_CASE("signed values", "[endian][signed]") {
+    int8_t i8 = 0x01;
+    int16_t i16 = 0x0123;
+    int32_t i32 = 0x01234567;
+    int64_t i64 = 0x0123456789abcdef;
+
+#ifdef __LITTLE_ENDIAN__
+    constexpr int8_t i8_little = 0x01;
+    constexpr int16_t i16_little = 0x0123;
+    constexpr int32_t i32_little = 0x01234567;
+    constexpr int64_t i64_little = 0x0123456789abcdef;
+    constexpr int8_t i8_big = 0x01;
+    constexpr int16_t i16_big = 0x2301;
+    constexpr int32_t i32_big = 0x67452301;
+    constexpr int64_t i64_big = -0x1032547698badcff;
+#else
+    constexpr int8_t i8_little = 0x01;
+    constexpr int16_t i16_little = 0x2301;
+    constexpr int32_t i32_little = 0x67452301;
+    constexpr int64_t i64_little = -0x1032547698badcff;
+    constexpr int8_t i8_big = 0x01;
+    constexpr int16_t i16_big = 0x0123;
+    constexpr int32_t i32_big = 0x01234567;
+    constexpr int64_t i64_big = 0x0123456789abcdef;
+#endif
+
+    CHECK( host_to_little(i8) == i8_little );
+    CHECK( host_to_little(i16) == i16_little );
+    CHECK( host_to_little(i32) == i32_little );
+    CHECK( host_to_little(i64) == i64_little );
+    CHECK( host_to_big(i8) == i8_big );
+    CHECK( host_to_big(i16) == i16_big );
+    CHECK( host_to_big(i32) == i32_big );
+    CHECK( host_to_big(i64) == i64_big );
+}
