@@ -4,8 +4,6 @@
 #include <cstring>
 #include <type_traits>
 
-namespace oxenc {
-
 #if defined(_MSC_VER) && (!defined(__clang__) || defined(__c2__))
 #  include <cstdlib>
 
@@ -17,7 +15,9 @@ namespace oxenc {
 #  define bswap_32(x) __builtin_bswap32(x)
 #  define bswap_64(x) __builtin_bswap64(x)
 #elif defined(__linux__)
+extern "C" {
 #  include <byteswap.h>
+} // extern "C"
 #else
 #  error "Don't know how to byteswap on this platform!"
 #endif
@@ -33,9 +33,6 @@ namespace oxenc {
 #elif !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
 #  error "Error: don't know which endian this is"
 #endif
-
-} // extern "C"
-
 
 namespace oxenc {
 
