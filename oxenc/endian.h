@@ -22,27 +22,29 @@ extern "C" {
 #  error "Don't know how to byteswap on this platform!"
 #endif
 
-#if !defined(__LITTLE_ENDIAN__) && defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) \
-    && __BYTE_ORDER == __LITTLE_ENDIAN
-#  define __LITTLE_ENDIAN__
-#elif !defined(__BIG_ENDIAN__) && defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) \
-    && __BYTE_ORDER == __BIG_ENDIAN
-#  define __BIG_ENDIAN__
-#elif defined(_WIN32)
-#  define __LITTLE_ENDIAN__
-#elif !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
-#  error "Error: don't know which endian this is"
-#endif
-
 namespace oxenc {
 
     /// True if this is a little-endian platform
     inline constexpr bool little_endian =
-#ifdef __LITTLE_ENDIAN__
-        true;
+#if defined(__LITTLE_ENDIAN__)
+        true
+#elif defined(__BIG_ENDIAN__)
+        false
+#elif defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && __BYTE_ORDER == __LITTLE_ENDIAN
+        true
+#elif defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        true
+#elif defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && __BYTE_ORDER == __BIG_ENDIAN
+        false
+#elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        false
+#elif defined(_WIN32)
+        true
 #else
-        false;
+#  error "Error: don't know which endian this is"
 #endif
+        ;
+
     /// True if this is a big-endian platform
     inline constexpr bool big_endian = !little_endian;
 
