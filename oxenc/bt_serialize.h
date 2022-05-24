@@ -78,11 +78,13 @@ inline void bt_need_more(const std::string_view &s) {
         throw bt_deserialize_invalid{"Unexpected end of string while deserializing"};
 }
 
+using some64 = union { int64_t i64; uint64_t u64; };
+
 /// Deserializes a signed or unsigned 64-bit integer from a string.  Sets the second bool to true
 /// iff the value read was negative, false if positive; in either case the unsigned value is return
 /// in .first.  Throws an exception if the read value doesn't fit in a int64_t (if negative) or a
 /// uint64_t (if positive).  Removes consumed characters from the string_view.
-std::pair<uint64_t, bool> bt_deserialize_integer(std::string_view& s);
+std::pair<some64, bool> bt_deserialize_integer(std::string_view& s);
 
 /// Integer specializations
 template <typename T>
@@ -101,25 +103,25 @@ struct bt_deserialize<T, std::enable_if_t<std::is_integral_v<T>>> {
         constexpr uint64_t umax = static_cast<uint64_t>(std::numeric_limits<T>::max());
         constexpr int64_t smin = static_cast<int64_t>(std::numeric_limits<T>::min());
 
-        auto [magnitude, negative] = bt_deserialize_integer(s);
+        auto [v, neg] = bt_deserialize_integer(s);
 
         if (std::is_signed_v<T>) {
-            if (!negative) {
-                if (magnitude > umax)
-                    throw bt_deserialize_invalid("Integer deserialization failed: found too-large value " + std::to_string(magnitude) + " > " + std::to_string(umax));
-                val = static_cast<T>(magnitude);
+            if (!neg) {
+                if (v.u64 > umax)
+                    throw bt_deserialize_invalid("Integer deserialization failed: found too-large value " + std::to_string(v.u64) + " > " + std::to_string(umax));
+                val = static_cast<T>(v.u64);
             } else {
-                auto sval = -static_cast<int64_t>(magnitude);
+                auto& sval = v.i64;
                 if (!std::is_same_v<T, int64_t> && sval < smin)
                     throw bt_deserialize_invalid("Integer deserialization failed: found too-low value " + std::to_string(sval) + " < " + std::to_string(smin));
                 val = static_cast<T>(sval);
             }
         } else {
-            if (negative)
-                throw bt_deserialize_invalid("Integer deserialization failed: found negative value -" + std::to_string(magnitude) + " but type is unsigned");
-            if (!std::is_same_v<T, uint64_t> && magnitude > umax)
-                throw bt_deserialize_invalid("Integer deserialization failed: found too-large value " + std::to_string(magnitude) + " > " + std::to_string(umax));
-            val = static_cast<T>(magnitude);
+            if (neg)
+                throw bt_deserialize_invalid("Integer deserialization failed: found negative value -" + std::to_string(v.i64) + " but type is unsigned");
+            if (!std::is_same_v<T, uint64_t> && v.u64 > umax)
+                throw bt_deserialize_invalid("Integer deserialization failed: found too-large value " + std::to_string(v.u64) + " > " + std::to_string(umax));
+            val = static_cast<T>(v.u64);
         }
     }
 };
@@ -701,16 +703,16 @@ public:
 
     /// Consumes a value without returning it.
     void skip_value() {
-      if (is_string())
-        consume_string_view();
-    else if (is_integer())
-        detail::bt_deserialize_integer(data);
-    else if (is_list())
-        consume_list_data();
-    else if (is_dict())
-        consume_dict_data();
-    else
-      throw bt_deserialize_invalid_type{"next bt value has unknown type"};
+        if (is_string())
+            consume_string_view();
+        else if (is_integer())
+            detail::bt_deserialize_integer(data);
+        else if (is_list())
+            consume_list_data();
+        else if (is_dict())
+            consume_dict_data();
+        else
+            throw bt_deserialize_invalid_type{"next bt value has unknown type"};
     }
 
     /// Attempts to parse the next value as a list and returns the string_view that contains the
@@ -973,18 +975,18 @@ namespace detail {
 
 /// Reads digits into an unsigned 64-bit int.
 inline uint64_t extract_unsigned(std::string_view& s) {
-    if (s.empty())
-        throw bt_deserialize_invalid{"Expected 0-9 but found end of string"};
-    if (s[0] < '0' || s[0] > '9')
-        throw bt_deserialize_invalid("Expected 0-9 but found '"s + s[0]);
     uint64_t uval = 0;
+    bool once = false;
     while (!s.empty() && (s[0] >= '0' && s[0] <= '9')) {
+        once = true;
         uint64_t bigger = uval * 10 + (s[0] - '0');
         s.remove_prefix(1);
         if (bigger < uval) // overflow
             throw bt_deserialize_invalid("Integer deserialization failed: value is too large for a 64-bit int");
         uval = bigger;
     }
+    if (!once)
+        throw bt_deserialize_invalid{"Expected 0-9 was not found"};
     return uval;
 }
 
@@ -1012,25 +1014,29 @@ static_assert(std::numeric_limits<int64_t>::min() + std::numeric_limits<int64_t>
         static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) + uint64_t{1} == (uint64_t{1} << 63),
         "Non 2s-complement architecture not supported!");
 
-inline std::pair<uint64_t, bool> bt_deserialize_integer(std::string_view& s) {
+inline std::pair<some64, bool> bt_deserialize_integer(std::string_view& s) {
     // Smallest possible encoded integer is 3 chars: "i0e"
     if (s.size() < 3) throw bt_deserialize_invalid("Deserialization failed: end of string found where integer expected");
     if (s[0] != 'i') throw bt_deserialize_invalid_type("Deserialization failed: expected 'i', found '"s + s[0] + '\'');
     s.remove_prefix(1);
-    std::pair<uint64_t, bool> result;
+    std::pair<some64, bool> result;
+    auto& [val, negative] = result;
     if (s[0] == '-') {
-        result.second = true;
+        negative = true;
         s.remove_prefix(1);
+        val.u64 = extract_unsigned(s);
+        if (val.u64 > (uint64_t{1} << 63))
+            throw bt_deserialize_invalid("Deserialization of integer failed: negative integer value is too large for a 64-bit signed int");
+        val.i64 = -static_cast<int64_t>(val.u64);
+    } else {
+        val.u64 = extract_unsigned(s);
     }
 
-    result.first = extract_unsigned(s);
     if (s.empty())
         throw bt_deserialize_invalid("Integer deserialization failed: encountered end of string before integer was finished");
     if (s[0] != 'e')
         throw bt_deserialize_invalid("Integer deserialization failed: expected digit or 'e', found '"s + s[0] + '\'');
     s.remove_prefix(1);
-    if (result.second /*negative*/ && result.first > (uint64_t{1} << 63))
-        throw bt_deserialize_invalid("Deserialization of integer failed: negative integer value is too large for a 64-bit signed int");
 
     return result;
 }
@@ -1056,9 +1062,9 @@ inline void bt_deserialize<bt_value, void>::operator()(std::string_view& s, bt_v
             break;
         }
         case 'i': {
-            auto [magnitude, negative] = bt_deserialize_integer(s);
-            if (negative) val = -static_cast<int64_t>(magnitude);
-            else val = magnitude;
+            auto [v, negative] = bt_deserialize_integer(s);
+            if (negative) val = v.i64;
+            else val = v.u64;
             break;
         }
         case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': {
