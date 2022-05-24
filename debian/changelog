@@ -1,3 +1,13 @@
+oxen-encoding (1.0.3-1~ubuntu2110) impish; urgency=medium
+
+  * Clean up/optimize integer parsing
+  * Fix mangled namespace/extern "C"
+  * Allow endian swapping signed integers
+  * Bump version
+  * Fix endian detection
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 24 May 2022 16:12:30 -0300
+
 oxen-encoding (1.0.2-1~ubuntu2110) impish; urgency=medium
 
   [ Thomas Winget ]
