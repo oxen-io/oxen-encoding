@@ -1,4 +1,4 @@
-oxen-encoding (1.0.3-1) sid; urgency=medium
+oxen-encoding (1.0.3-1~deb12) bookworm; urgency=medium
 
   * Clean up/optimize integer parsing
   * Fix mangled namespace/extern "C"
