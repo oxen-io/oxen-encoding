@@ -51,6 +51,8 @@ target_include_directories(oxenc
         $<INSTALL_INTERFACE:>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
+add_library(oxenc::oxenc ALIAS oxenc)
+
 export(
     TARGETS oxenc
     NAMESPACE oxenc::
