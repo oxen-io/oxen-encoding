@@ -73,8 +73,8 @@ namespace oxenc {
         const char* to;
 
         // Sublist constructors
-        inline bt_list_producer(bt_list_producer* parent, std::string_view prefix = "l"sv);
-        inline bt_list_producer(bt_dict_producer* parent, std::string_view prefix = "l"sv);
+        bt_list_producer(bt_list_producer* parent, std::string_view prefix = "l"sv);
+        bt_list_producer(bt_dict_producer* parent, std::string_view prefix = "l"sv);
 
         // Does the actual appending to the buffer, and throwing if we'd overrun.  If advance is false
         // then we append without moving the buffer pointer (primarily when we append intermediate `e`s
@@ -131,17 +131,17 @@ namespace oxenc {
         bt_list_producer(const bt_list_producer&) = delete;
         bt_list_producer& operator=(const bt_list_producer&) = delete;
         bt_list_producer& operator=(bt_list_producer&&) = delete;
-        inline bt_list_producer(bt_list_producer&& other);
+        bt_list_producer(bt_list_producer&& other);
 
         /// Constructs a list producer that writes into the range [begin, end).  If a write would go
         /// beyond the end of the buffer an exception is raised.  Note that this will happen during
         /// construction if the given buffer is not large enough to contain the `le` encoding of an
         /// empty list.
-        inline bt_list_producer(char* begin, char* end);
+        bt_list_producer(char* begin, char* end) : bt_list_producer{begin, end, "l"sv} {}
 
         /// Constructs a list producer that writes into the range [begin, begin+size).  If a write would
         /// go beyond the end of the buffer an exception is raised.
-        bt_list_producer(char* begin, size_t len) : bt_list_producer{begin, begin + len} {}
+        bt_list_producer(char* begin, size_t len) : bt_list_producer{begin, begin + len, "l"sv} {}
 
         ~bt_list_producer();
 
@@ -201,7 +201,7 @@ namespace oxenc {
         ///
         /// If doing more complex lifetime management, take care not to allow the child instance to
         /// outlive the parent.
-        inline bt_list_producer append_list();
+        bt_list_producer append_list();
 
         /// Appends a dict to this list.  Returns a new bt_dict_producer that references the parent
         /// list.  The parent cannot be added to until the subdict is destroyed.  This is meant to be
@@ -209,7 +209,7 @@ namespace oxenc {
         ///
         /// If doing more complex lifetime management, take care not to allow the child instance to
         /// outlive the parent.
-        inline bt_dict_producer append_dict();
+        bt_dict_producer append_dict();
     };
 
 
