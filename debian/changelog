@@ -1,3 +1,11 @@
+oxen-encoding (1.0.4-1) sid; urgency=medium
+
+  * Set up oxenc::oxenc target
+  * Remove unnecessary `inline` on method declarations
+  * bt_list_producer fixes
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 27 Jul 2022 12:48:19 -0300
+
 oxen-encoding (1.0.3-1) sid; urgency=medium
 
   * Clean up/optimize integer parsing
