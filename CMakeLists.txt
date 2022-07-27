@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(oxenc
-    VERSION 1.0.3
+    VERSION 1.0.4
     DESCRIPTION "oxenc - Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library"
     LANGUAGES CXX)
 
@@ -50,6 +50,8 @@ target_include_directories(oxenc
     INTERFACE
         $<INSTALL_INTERFACE:>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+
+add_library(oxenc::oxenc ALIAS oxenc)
 
 export(
     TARGETS oxenc
