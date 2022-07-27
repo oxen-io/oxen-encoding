@@ -230,7 +230,7 @@ TEST_CASE("bt allocation-free consumer", "[bt][dict][list][consumer]") {
             std::make_pair("b"sv, std::make_tuple(1, 2, 3)) );
 }
 
-TEST_CASE("bt allocation-free producer", "[bt][dict][list][producer]") {
+TEST_CASE("bt allocation-free list producer", "[bt][list][producer]") {
 
     char smallbuf[16];
     bt_list_producer toosmall{smallbuf, 16}; // le, total = 2
@@ -286,6 +286,42 @@ TEST_CASE("bt allocation-free producer", "[bt][dict][list][producer]") {
         CHECK( dict.view() == "d3:foo3:bar1:gi42e1:hld1:ad1:Ali999eeeeee" );
         CHECK( lp.view() == "l3:abci42ei1ei17ei-999eli0e0:elll3:omgeeed3:foo3:bar1:gi42e1:hld1:ad1:Ali999eeeeeee" );
     }
+
+}
+
+TEST_CASE("bt allocation-free dict producer", "[bt][dict][producer]") {
+
+    char buf[1024];
+    bt_dict_producer dp{buf, sizeof(buf)};
+    CHECK( dp.view() == "de" );
+    CHECK( (void*) dp.end() == (void*) (buf + 2) );
+
+    dp.append("foo", "bar");
+    CHECK( dp.view() == "d3:foo3:bare" );
+    dp.append("foo\0"sv, -333222111);
+    CHECK( dp.view() == "d3:foo3:bar4:foo\0i-333222111ee"sv );
+    {
+        auto sublist = dp.append_list("myList");
+        ((sublist += "") += 2) += 42;
+        CHECK( sublist.view() == "l0:i2ei42ee" );
+    }
+    CHECK( dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42eee"sv );
+    {
+        auto subd = dp.append_dict("p");
+        subd.append("", "");
+        CHECK( subd.view() == "d0:0:e" );
+    }
+    CHECK( dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:ee"sv );
+
+    std::map<std::string, int> to_append{
+        {"q", 1},
+        {"r", 2},
+        {"~", 3},
+        {"~1", 4}};
+    dp.append(to_append.begin(), to_append.end());
+
+    CHECK( dp.view() ==
+        "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv );
 }
 
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
