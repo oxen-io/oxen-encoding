@@ -1,3 +1,11 @@
+oxen-encoding (1.0.5-1) sid; urgency=medium
+
+  * Add bt_value/dict/list support to bt_..._producer
+  * Version bump
+  * static_cast to base variant type to help older gcc
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 04 Nov 2022 12:07:31 -0300
+
 oxen-encoding (1.0.4-1) sid; urgency=medium
 
   * Set up oxenc::oxenc target
