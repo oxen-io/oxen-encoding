@@ -54,12 +54,12 @@ namespace oxenc {
 
         inline void serialize_dict(bt_dict_producer& out, const bt_dict& d) {
             for (const auto& [k, v]: d)
-                var::visit(dict_appender{out, k}, v);
+                var::visit(dict_appender{out, k}, static_cast<const bt_variant&>(v));
         }
 
         inline void serialize_list(bt_list_producer& out, const bt_list& l) {
             for (auto& val : l)
-                var::visit(list_appender{out}, val);
+                var::visit(list_appender{out}, static_cast<const bt_variant&>(val));
         }
     }
 
@@ -77,7 +77,7 @@ namespace oxenc {
 
     template <>
     inline void bt_list_producer::append_bt(const bt_value& bt) {
-        var::visit(detail::list_appender{*this}, bt);
+        var::visit(detail::list_appender{*this}, static_cast<const bt_variant&>(bt));
     }
 
     template <>
@@ -94,6 +94,6 @@ namespace oxenc {
 
     template <>
     inline void bt_dict_producer::append_bt(std::string_view key, const bt_value& bt) {
-        var::visit(detail::dict_appender{*this, key}, bt);
+        var::visit(detail::dict_appender{*this, key}, static_cast<const bt_variant&>(bt));
     }
 }
