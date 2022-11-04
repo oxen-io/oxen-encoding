@@ -213,6 +213,11 @@ namespace oxenc {
         /// If doing more complex lifetime management, take care not to allow the child instance to
         /// outlive the parent.
         bt_dict_producer append_dict();
+
+        /// Appends a bt_value, bt_dict, or bt_list to this bt_list.  You must include the
+        /// bt_value_producer.h header (either directly or via bt.h) to use this method.
+        template <typename T>
+        void append_bt(const T& bt);
     };
 
 
@@ -341,6 +346,11 @@ namespace oxenc {
             check_incrementing_key(key.size());
             return bt_list_producer{this};
         }
+
+        /// Appends a bt_value, bt_dict, or bt_list to this bt_dict.  You must include the
+        /// bt_value_producer.h header (either directly or via bt.h) to use this method.
+        template <typename T>
+        void append_bt(std::string_view key, const T& bt);
     };
 
     inline bt_list_producer::bt_list_producer(bt_list_producer* parent, std::string_view prefix)
