@@ -74,6 +74,7 @@ if(OXENC_INSTALL)
     oxenc/bt_producer.h
     oxenc/bt_serialize.h
     oxenc/bt_value.h
+    oxenc/bt_value_producer.h
     oxenc/byte_type.h
     oxenc/endian.h
     oxenc/hex.h
