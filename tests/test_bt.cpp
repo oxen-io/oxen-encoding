@@ -324,6 +324,37 @@ TEST_CASE("bt allocation-free dict producer", "[bt][dict][producer]") {
         "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv );
 }
 
+TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
+
+    char buf[1024];
+    bt_dict_producer x{buf, sizeof(buf)};
+
+    bt_dict more{
+        {"b", 1},
+        {"c", bt_dict{
+            {"d", "e"},
+            {"f", bt_list{{1,2,3}}}
+        }}
+    };
+    bt_dict tiny{{"a", ""}};
+
+    x.append("a", 42);
+    x.append_bt("x", bt_value{tiny});
+    x.append_bt("y", bt_list{{tiny}});
+    x.append_bt("z", more);
+
+    CHECK( x.view() == "d1:ai42e1:xd1:a0:e1:yld1:a0:ee1:zd1:bi1e1:cd1:d1:e1:fli1ei2ei3eeeee" );
+
+    bt_list_producer y{buf, sizeof(buf)};
+    y.append(123);
+    y.append_bt(more);
+    y.append_bt(bt_value{tiny});
+    y.append_bt(bt_list{{tiny}});
+    y.append("~");
+
+    CHECK( y.view() == "li123ed1:bi1e1:cd1:d1:e1:fli1ei2ei3eeeed1:a0:eld1:a0:ee1:~e" );
+}
+
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
 TEST_CASE("apple to_chars workaround test", "[bt][apple][sucks]") {
     char buf[20];
