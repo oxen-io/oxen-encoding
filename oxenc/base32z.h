@@ -272,4 +272,13 @@ template <typename CharT>
 std::string from_base32z(std::basic_string_view<CharT> s) { return from_base32z(s.begin(), s.end()); }
 inline std::string from_base32z(std::string_view s) { return from_base32z<>(s); }
 
+inline namespace literals {
+    inline std::string operator""_b32z(const char* x, size_t n) {
+        std::string_view in{x, n};
+        if (!is_base32z(in))
+            throw std::invalid_argument{"base32z literal is not base32z"};
+        return from_base32z(in);
+    }
+}
+
 }
