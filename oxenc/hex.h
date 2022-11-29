@@ -221,4 +221,13 @@ template <typename CharT>
 std::string from_hex(std::basic_string_view<CharT> s) { return from_hex(s.begin(), s.end()); }
 inline std::string from_hex(std::string_view s) { return from_hex<>(s); }
 
+inline namespace literals {
+    inline std::string operator""_hex(const char* x, size_t n) {
+        std::string_view in{x, n};
+        if (!is_hex(in))
+            throw std::invalid_argument{"hex literal is not hex"};
+        return from_hex(in);
+    }
+}
+
 }
