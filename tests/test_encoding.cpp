@@ -2,6 +2,7 @@
 #include <iterator>
 
 using namespace std::literals;
+using namespace oxenc::literals;
 
 const std::string pk = "\xf1\x6b\xa5\x59\x10\x39\xf0\x89\xb4\x2a\x83\x41\x75\x09\x30\x94\x07\x4d\x0d\x93\x7a\x79\xe5\x3e\x5c\xe7\x30\xf9\x46\xe1\x4b\x88";
 const std::string pk_hex = "f16ba5591039f089b42a834175093094074d0d937a79e53e5ce730f946e14b88";
@@ -19,6 +20,9 @@ TEST_CASE("hex encoding/decoding", "[encoding][decoding][hex]") {
     REQUIRE( oxenc::to_hex(chars.begin(), chars.end()) == "010a64fe" );
 
     REQUIRE( oxenc::from_hex("12345678ffEDbca9") == "\x12\x34\x56\x78\xff\xed\xbc\xa9"s );
+    REQUIRE( "12345678ffEDbca9"_hex == "\x12\x34\x56\x78\xff\xed\xbc\xa9"s );
+    REQUIRE_THROWS_AS( "abc"_hex, std::invalid_argument );
+    REQUIRE_THROWS_AS( "abcg"_hex, std::invalid_argument );
 
     REQUIRE( oxenc::is_hex("1234567890abcdefABCDEF1234567890abcdefABCDEF") );
     REQUIRE_FALSE( oxenc::is_hex("1234567890abcdefABCDEF1234567890aGcdefABCDEF") );
@@ -79,6 +83,12 @@ TEST_CASE("base32z encoding/decoding", "[encoding][decoding][base32z]") {
 
     REQUIRE( oxenc::from_base32z("YRTWK3HJIXG66YJDEIUAUK6P7HY1GTM8TGIH55ABRPNSXNPM3ZZO")
             == "\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef"sv);
+
+    REQUIRE( "yrtwk3hjixg66yjdeiuauk6p7hy1gtm8tgih55abrpnsxnpm3zzo"_b32z
+            == "\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef"sv);
+    REQUIRE( "YRTWK3HJIXG66YJDEIUAUK6P7HY1GTM8TGIH55ABRPNSXNPM3ZZO"_b32z
+            == "\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef\x01\x23\x45\x67\x89\xab\xcd\xef"sv);
+    REQUIRE_THROWS_AS( "abcl"_b32z, std::invalid_argument );
 
     auto five_nulls = oxenc::from_base32z("yyyyyyyy");
     REQUIRE( five_nulls.size() == 5 );
@@ -243,6 +253,10 @@ TEST_CASE("base64 encoding/decoding", "[encoding][decoding][base64]") {
             "animals, which is a lust of the mind, that by a perseverance of delight in the "
             "continued and indefatigable generation of knowledge, exceeds the short vehemence of "
             "any carnal pleasure.");
+
+    REQUIRE( "SGVsbG8="_b64 == "Hello" );
+    REQUIRE( "SGVsbG8"_b64 == "Hello" );
+    REQUIRE_THROWS_AS( "SGVsbG8$"_b64, std::invalid_argument );
 
     REQUIRE( oxenc::to_base64(pk) == pk_b64 );
     REQUIRE( oxenc::to_base64(pk.begin(), pk.end()) == pk_b64 );
