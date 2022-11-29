@@ -1,3 +1,10 @@
+oxen-encoding (1.0.6-1~ubuntu2204) jammy; urgency=medium
+
+  * Fix dict consumer's next_dict()
+  * Add _hex, _b32z, _b64 user-defined literals
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Nov 2022 12:22:11 -0400
+
 oxen-encoding (1.0.5-2~ubuntu2204) jammy; urgency=medium
 
   * Add missing header to install list
