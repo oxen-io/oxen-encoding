@@ -876,7 +876,7 @@ public:
     template <typename T = bt_dict>
     std::pair<std::string_view, T> next_dict() {
         std::pair<std::string_view, T> pair;
-        pair.first = consume_dict(pair.second);
+        pair.first = next_dict(pair.second);
         return pair;
     }
 
