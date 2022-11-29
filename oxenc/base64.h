@@ -342,4 +342,13 @@ template <typename CharT>
 std::string from_base64(std::basic_string_view<CharT> s) { return from_base64(s.begin(), s.end()); }
 inline std::string from_base64(std::string_view s) { return from_base64<>(s); }
 
+inline namespace literals {
+    inline std::string operator""_b64(const char* x, size_t n) {
+        std::string_view in{x, n};
+        if (!is_base64(in))
+            throw std::invalid_argument{"base64 literal is not base64"};
+        return from_base64(in);
+    }
+}
+
 }
