@@ -41,7 +41,8 @@ struct b64_table {
     constexpr char from_b64(unsigned char c) const noexcept { return from_b64_lut[c]; }
     // Convert a 0-31 value into a b64 encoded character
     constexpr char to_b64(unsigned char b) const noexcept { return to_b64_lut[b]; }
-} constexpr b64_lut;
+};
+inline constexpr b64_table b64_lut{};
 
 // This main point of this static assert is to force the compiler to compile-time build the constexpr tables.
 static_assert(b64_lut.from_b64('/') == 63 && b64_lut.from_b64('7') == 59 && b64_lut.to_b64(38) == 'm', "");

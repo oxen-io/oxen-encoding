@@ -720,7 +720,7 @@ public:
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
     std::string_view consume_list_data() {
-      auto start = data.begin();
+      auto orig = data;
       if (data.size() < 2 || !is_list()) throw bt_deserialize_invalid_type{"next bt value is not a list"};
       data.remove_prefix(1); // Descend into the sublist, consume the "l"
       while (!is_finished()) {
@@ -729,7 +729,8 @@ public:
             throw bt_deserialize_invalid{"bt list consumption failed: hit the end of string before the list was done"};
       }
       data.remove_prefix(1); // Back out from the sublist, consume the "e"
-      return {start, static_cast<size_t>(std::distance(start, data.begin()))};
+      orig.remove_suffix(data.size());
+      return orig;
     }
 
     /// Attempts to parse the next value as a dict and returns the string_view that contains the
@@ -737,7 +738,7 @@ public:
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
     std::string_view consume_dict_data() {
-        auto start = data.begin();
+        auto orig = data;
         if (data.size() < 2 || !is_dict()) throw bt_deserialize_invalid_type{"next bt value is not a dict"};
         data.remove_prefix(1); // Descent into the dict, consumer the "d"
         while (!is_finished()) {
@@ -748,7 +749,8 @@ public:
                 throw bt_deserialize_invalid{"bt dict consumption failed: hit the end of string before the dict was done"};
         }
         data.remove_prefix(1); // Back out of the dict, consume the "e"
-        return {start, static_cast<size_t>(std::distance(start, data.begin()))};
+        orig.remove_suffix(data.size());
+        return orig;
     }
 
     /// Shortcut for wrapping `consume_list_data()` in a new list consumer
