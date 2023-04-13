@@ -28,6 +28,8 @@ namespace var = std; // Oh look, actual C++17 support
 
 // Oh look, apple.
 
+#include <stdexcept>
+
 namespace var {
 
 // Apple won't let us use std::visit or std::get if targetting some version of macos earlier than
