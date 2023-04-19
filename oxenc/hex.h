@@ -4,6 +4,7 @@
 #include <array>
 #include <iterator>
 #include <cassert>
+#include <stdexcept>
 #include "byte_type.h"
 
 namespace oxenc {
