@@ -39,7 +39,8 @@ struct b32z_table {
     constexpr char from_b32z(unsigned char c) const noexcept { return from_b32z_lut[c]; }
     // Convert a 0-31 value into a b32z encoded character
     constexpr char to_b32z(unsigned char b) const noexcept { return to_b32z_lut[b]; }
-} constexpr b32z_lut;
+};
+inline constexpr b32z_table b32z_lut{};
 
 // This main point of this static assert is to force the compiler to compile-time build the constexpr tables.
 static_assert(b32z_lut.from_b32z('w') == 20 && b32z_lut.from_b32z('T') == 17 && b32z_lut.to_b32z(5) == 'f', "");

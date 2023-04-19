@@ -27,7 +27,8 @@ struct hex_table {
     }
     constexpr char from_hex(unsigned char c) const noexcept { return from_hex_lut[c]; }
     constexpr char to_hex(unsigned char b) const noexcept { return to_hex_lut[b]; }
-} constexpr hex_lut;
+};
+inline constexpr hex_table hex_lut{};
 
 // This main point of this static assert is to force the compiler to compile-time build the constexpr tables.
 static_assert(hex_lut.from_hex('a') == 10 && hex_lut.from_hex('F') == 15 && hex_lut.to_hex(13) == 'd', "");
