@@ -18,13 +18,13 @@ namespace detail {
         char to_hex_lut[16];
         constexpr hex_table() noexcept : from_hex_lut{}, to_hex_lut{} {
             for (unsigned char c = 0; c < 10; c++) {
-                from_hex_lut[(unsigned char)('0' + c)] = 0 + c;
-                to_hex_lut[(unsigned char)(0 + c)] = '0' + c;
+                from_hex_lut[(unsigned char)('0' + c)] = static_cast<char>(0 + c);
+                to_hex_lut[(unsigned char)(0 + c)] = static_cast<char>('0' + c);
             }
             for (unsigned char c = 0; c < 6; c++) {
-                from_hex_lut[(unsigned char)('a' + c)] = 10 + c;
-                from_hex_lut[(unsigned char)('A' + c)] = 10 + c;
-                to_hex_lut[(unsigned char)(10 + c)] = 'a' + c;
+                from_hex_lut[(unsigned char)('a' + c)] = static_cast<char>(10 + c);
+                from_hex_lut[(unsigned char)('A' + c)] = static_cast<char>(10 + c);
+                to_hex_lut[(unsigned char)(10 + c)] = static_cast<char>('a' + c);
             }
         }
         constexpr char from_hex(unsigned char c) const noexcept { return from_hex_lut[c]; }
@@ -172,7 +172,7 @@ constexpr char from_hex_digit(unsigned char x) noexcept {
 
 /// Constructs a byte value from a pair of hex digits
 constexpr char from_hex_pair(unsigned char a, unsigned char b) noexcept {
-    return (from_hex_digit(a) << 4) | from_hex_digit(b);
+    return static_cast<char>((from_hex_digit(a) << 4) | from_hex_digit(b));
 }
 
 /// Iterable object for on-the-fly hex decoding.  Used internally but also particularly useful when
