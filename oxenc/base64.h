@@ -1,92 +1,103 @@
 #pragma once
+#include <array>
+#include <cassert>
+#include <iterator>
+#include <stdexcept>
 #include <string>
 #include <string_view>
-#include <array>
-#include <iterator>
-#include <cassert>
-#include <stdexcept>
+
 #include "byte_type.h"
 
 namespace oxenc {
 
 namespace detail {
 
-/// Compile-time generated lookup tables for base64 conversion.
-struct b64_table {
-    // Store the 0-63 decoded value of every possible char; all the chars that aren't valid are set
-    // to 0.  (If you don't trust your data, check it with is_base64 first, which uses these 0's
-    // to detect invalid characters -- which is why we want a full 256 element array).
-    char from_b64_lut[256];
-    // Store the encoded character of every 0-63 (6 bit) value.
-    char to_b64_lut[64];
+    /// Compile-time generated lookup tables for base64 conversion.
+    struct b64_table {
+        // Store the 0-63 decoded value of every possible char; all the chars that aren't valid are
+        // set to 0.  (If you don't trust your data, check it with is_base64 first, which uses these
+        // 0's to detect invalid characters -- which is why we want a full 256 element array).
+        char from_b64_lut[256];
+        // Store the encoded character of every 0-63 (6 bit) value.
+        char to_b64_lut[64];
 
-    // constexpr constructor that fills out the above (and should do it at compile time for any half
-    // decent compiler).
-    constexpr b64_table() noexcept : from_b64_lut{}, to_b64_lut{} {
-        for (unsigned char c = 0; c < 26; c++) {
-            from_b64_lut[(unsigned char)('A' + c)] =  0  + c;
-            to_b64_lut[  (unsigned char)( 0  + c)] = 'A' + c;
+        // constexpr constructor that fills out the above (and should do it at compile time for any
+        // half decent compiler).
+        constexpr b64_table() noexcept : from_b64_lut{}, to_b64_lut{} {
+            for (unsigned char c = 0; c < 26; c++) {
+                from_b64_lut[(unsigned char)('A' + c)] = 0 + c;
+                to_b64_lut[(unsigned char)(0 + c)] = 'A' + c;
+            }
+            for (unsigned char c = 0; c < 26; c++) {
+                from_b64_lut[(unsigned char)('a' + c)] = 26 + c;
+                to_b64_lut[(unsigned char)(26 + c)] = 'a' + c;
+            }
+            for (unsigned char c = 0; c < 10; c++) {
+                from_b64_lut[(unsigned char)('0' + c)] = 52 + c;
+                to_b64_lut[(unsigned char)(52 + c)] = '0' + c;
+            }
+            to_b64_lut[62] = '+';
+            from_b64_lut[(unsigned char)'+'] = 62;
+            to_b64_lut[63] = '/';
+            from_b64_lut[(unsigned char)'/'] = 63;
         }
-        for (unsigned char c = 0; c < 26; c++) {
-            from_b64_lut[(unsigned char)('a' + c)] = 26  + c;
-            to_b64_lut[  (unsigned char)(26  + c)] = 'a' + c;
-        }
-        for (unsigned char c = 0; c < 10; c++) {
-            from_b64_lut[(unsigned char)('0' + c)] = 52  + c;
-            to_b64_lut[  (unsigned char)(52  + c)] = '0' + c;
-        }
-        to_b64_lut[62] = '+'; from_b64_lut[(unsigned char) '+'] = 62;
-        to_b64_lut[63] = '/'; from_b64_lut[(unsigned char) '/'] = 63;
-    }
-    // Convert a b64 encoded character into a 0-63 value
-    constexpr char from_b64(unsigned char c) const noexcept { return from_b64_lut[c]; }
-    // Convert a 0-31 value into a b64 encoded character
-    constexpr char to_b64(unsigned char b) const noexcept { return to_b64_lut[b]; }
-};
-inline constexpr b64_table b64_lut{};
+        // Convert a b64 encoded character into a 0-63 value
+        constexpr char from_b64(unsigned char c) const noexcept { return from_b64_lut[c]; }
+        // Convert a 0-31 value into a b64 encoded character
+        constexpr char to_b64(unsigned char b) const noexcept { return to_b64_lut[b]; }
+    };
+    inline constexpr b64_table b64_lut{};
 
-// This main point of this static assert is to force the compiler to compile-time build the constexpr tables.
-static_assert(b64_lut.from_b64('/') == 63 && b64_lut.from_b64('7') == 59 && b64_lut.to_b64(38) == 'm', "");
+    // This main point of this static assert is to force the compiler to compile-time build the
+    // constexpr tables.
+    static_assert(
+            b64_lut.from_b64('/') == 63 && b64_lut.from_b64('7') == 59 && b64_lut.to_b64(38) == 'm',
+            "");
 
-} // namespace detail
+}  // namespace detail
 
-/// Returns the number of characters required to encode a base64 string from the given number of bytes.
+/// Returns the number of characters required to encode a base64 string from the given number of
+/// bytes.
 inline constexpr size_t to_base64_size(size_t byte_size, bool padded = true) {
-    return padded
-        ? (byte_size + 2) / 3 * 4 // bytes*4/3, rounded up to the next multiple of 4
-        : (byte_size * 4 + 2) / 3; // ⌈bytes*4/3⌉
+    return padded ? (byte_size + 2) / 3 * 4   // bytes*4/3, rounded up to the next multiple of 4
+                  : (byte_size * 4 + 2) / 3;  // ⌈bytes*4/3⌉
 }
 /// Returns the (maximum) number of bytes required to decode a base64 string of the given size.
 /// Note that this may overallocate by 1-2 bytes if the size includes 1-2 padding chars.
 inline constexpr size_t from_base64_size(size_t b64_size) {
-    return b64_size * 3 / 4; // == ⌊bits/8⌋; floor because we ignore trailing "impossible" bits (see below)
+    return b64_size * 3 /
+           4;  // == ⌊bits/8⌋; floor because we ignore trailing "impossible" bits (see below)
 }
 
 /// Iterable object for on-the-fly base64 encoding.  Used internally, but also particularly useful
 /// when converting from one encoding to another.
 template <typename InputIt>
 struct base64_encoder final {
-private:
+  private:
     InputIt _it, _end;
-    static_assert(sizeof(decltype(*_it)) == 1, "base64_encoder requires chars/bytes input iterator");
+    static_assert(
+            sizeof(decltype(*_it)) == 1, "base64_encoder requires chars/bytes input iterator");
     // How much padding (at most) we can add at the end
     int padding;
     // Number of bits held in r; will always be >= 6 until we are at the end.
     int bits{_it != _end ? 8 : 0};
     // Holds bits of data we've already read, which might belong to current or next chars
     uint_fast16_t r{bits ? static_cast<unsigned char>(*_it) : (unsigned char)0};
-public:
+
+  public:
     using iterator_category = std::input_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = char;
     using reference = value_type;
     using pointer = void;
-    base64_encoder(InputIt begin, InputIt end, bool padded = true)
-        : _it{std::move(begin)}, _end{std::move(end)}, padding{padded} {}
+    base64_encoder(InputIt begin, InputIt end, bool padded = true) :
+            _it{std::move(begin)}, _end{std::move(end)}, padding{padded} {}
 
     base64_encoder end() { return {_end, _end, false}; }
 
-    bool operator==(const base64_encoder& i) { return _it == i._it && bits == i.bits && padding == i.padding; }
+    bool operator==(const base64_encoder& i) {
+        return _it == i._it && bits == i.bits && padding == i.padding;
+    }
     bool operator!=(const base64_encoder& i) { return !(*this == i); }
 
     base64_encoder& operator++() {
@@ -118,12 +129,16 @@ public:
                 r <<= (6 - bits);
                 bits = 6;
             } else {
-                padding = 0; // No excess bits, so input was a multiple of 3 and thus no padding
+                padding = 0;  // No excess bits, so input was a multiple of 3 and thus no padding
             }
         }
         return *this;
     }
-    base64_encoder operator++(int) { base64_encoder copy{*this}; ++*this; return copy; }
+    base64_encoder operator++(int) {
+        base64_encoder copy{*this};
+        ++*this;
+        return copy;
+    }
 
     char operator*() {
         if (bits == 0 && padding)
@@ -148,7 +163,9 @@ OutputIt to_base64(InputIt begin, InputIt end, OutputIt out, bool padded = true)
 template <typename It>
 std::string to_base64(It begin, It end) {
     std::string base64;
-    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>) {
+    if constexpr (std::is_base_of_v<
+                          std::random_access_iterator_tag,
+                          typename std::iterator_traits<It>::iterator_category>) {
         using std::distance;
         base64.reserve(to_base64_size(distance(begin, end)));
     }
@@ -161,7 +178,9 @@ std::string to_base64(It begin, It end) {
 template <typename It>
 std::string to_base64_unpadded(It begin, It end) {
     std::string base64;
-    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>) {
+    if constexpr (std::is_base_of_v<
+                          std::random_access_iterator_tag,
+                          typename std::iterator_traits<It>::iterator_category>) {
         using std::distance;
         base64.reserve(to_base64_size(distance(begin, end), false));
     }
@@ -172,14 +191,22 @@ std::string to_base64_unpadded(It begin, It end) {
 /// Creates a base64 string from an iterable, std::string-like object.  The string will have '='
 /// padding, if appropriate.
 template <typename CharT>
-std::string to_base64(std::basic_string_view<CharT> s) { return to_base64(s.begin(), s.end()); }
-inline std::string to_base64(std::string_view s) { return to_base64<>(s); }
+std::string to_base64(std::basic_string_view<CharT> s) {
+    return to_base64(s.begin(), s.end());
+}
+inline std::string to_base64(std::string_view s) {
+    return to_base64<>(s);
+}
 
 /// Creates a base64 string from an iterable, std::string-like object.  The string will not be
 /// padded.
 template <typename CharT>
-std::string to_base64_unpadded(std::basic_string_view<CharT> s) { return to_base64_unpadded(s.begin(), s.end()); }
-inline std::string to_base64_unpadded(std::string_view s) { return to_base64_unpadded<>(s); }
+std::string to_base64_unpadded(std::basic_string_view<CharT> s) {
+    return to_base64_unpadded(s.begin(), s.end());
+}
+inline std::string to_base64_unpadded(std::string_view s) {
+    return to_base64_unpadded<>(s);
+}
 
 /// Returns true if the range is a base64 encoded value; we allow (but do not require) '=' padding,
 /// but only at the end, only 1 or 2, and only if it pads out the total to a multiple of 4.
@@ -191,7 +218,9 @@ constexpr bool is_base64(It begin, It end) {
     using std::distance;
     using std::prev;
     size_t count = 0;
-    constexpr bool random = std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>;
+    constexpr bool random = std::is_base_of_v<
+            std::random_access_iterator_tag,
+            typename std::iterator_traits<It>::iterator_category>;
     if constexpr (random) {
         count = distance(begin, end) % 4;
         if (count == 1)
@@ -216,7 +245,7 @@ constexpr bool is_base64(It begin, It end) {
     }
 
     if constexpr (!random)
-        if (count % 4 == 1) // base64 encoding will produce 4n, 4n+2, 4n+3, but never 4n+1
+        if (count % 4 == 1)  // base64 encoding will produce 4n, 4n+2, 4n+3, but never 4n+1
             return false;
 
     return true;
@@ -224,8 +253,12 @@ constexpr bool is_base64(It begin, It end) {
 
 /// Returns true if the string-like value is a base64 encoded value
 template <typename CharT>
-constexpr bool is_base64(std::basic_string_view<CharT> s) { return is_base64(s.begin(), s.end()); }
-constexpr bool is_base64(std::string_view s) { return is_base64(s.begin(), s.end()); }
+constexpr bool is_base64(std::basic_string_view<CharT> s) {
+    return is_base64(s.begin(), s.end());
+}
+constexpr bool is_base64(std::string_view s) {
+    return is_base64(s.begin(), s.end());
+}
 
 /// Iterable object for on-the-fly base64 decoding.  Used internally, but also particularly useful
 /// when converting from one encoding to another.  The input range must be a valid base64 encoded
@@ -237,12 +270,13 @@ constexpr bool is_base64(std::string_view s) { return is_base64(s.begin(), s.end
 /// "//9=", "//+=", etc. will all decode to the same \ff\ff output string.
 template <typename InputIt>
 struct base64_decoder final {
-private:
+  private:
     InputIt _it, _end;
-    static_assert(sizeof(decltype(*_it)) == 1, "base64_decoder requires chars/bytes input iterator");
+    static_assert(
+            sizeof(decltype(*_it)) == 1, "base64_decoder requires chars/bytes input iterator");
     uint_fast16_t in = 0;
-    int bits = 0; // number of bits loaded into `in`; will be in [8, 12] until we hit the end
-public:
+    int bits = 0;  // number of bits loaded into `in`; will be in [8, 12] until we hit the end
+  public:
     using iterator_category = std::input_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = char;
@@ -266,13 +300,15 @@ public:
             load_byte();
         return *this;
     }
-    base64_decoder operator++(int) { base64_decoder copy{*this}; ++*this; return copy; }
-
-    char operator*() {
-        return in >> (bits - 8);
+    base64_decoder operator++(int) {
+        base64_decoder copy{*this};
+        ++*this;
+        return copy;
     }
 
-private:
+    char operator*() { return in >> (bits - 8); }
+
+  private:
     void load_in() {
         // We hit padding trying to read enough for a full byte, so we're done.  (And since you were
         // already supposed to have checked validity with is_base64, the padding can only be at the
@@ -284,8 +320,7 @@ private:
             return;
         }
 
-        in = in << 6
-            | detail::b64_lut.from_b64(c);
+        in = in << 6 | detail::b64_lut.from_b64(c);
         bits += 6;
     }
 
@@ -330,7 +365,9 @@ OutputIt from_base64(InputIt begin, InputIt end, OutputIt out) {
 template <typename It>
 std::string from_base64(It begin, It end) {
     std::string bytes;
-    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>) {
+    if constexpr (std::is_base_of_v<
+                          std::random_access_iterator_tag,
+                          typename std::iterator_traits<It>::iterator_category>) {
         using std::distance;
         bytes.reserve(from_base64_size(distance(begin, end)));
     }
@@ -341,8 +378,12 @@ std::string from_base64(It begin, It end) {
 /// Converts base64 digits from a std::string-like object into a std::string of bytes.  Undefined
 /// behaviour if any characters are not valid base64 characters.
 template <typename CharT>
-std::string from_base64(std::basic_string_view<CharT> s) { return from_base64(s.begin(), s.end()); }
-inline std::string from_base64(std::string_view s) { return from_base64<>(s); }
+std::string from_base64(std::basic_string_view<CharT> s) {
+    return from_base64(s.begin(), s.end());
+}
+inline std::string from_base64(std::string_view s) {
+    return from_base64<>(s);
+}
 
 inline namespace literals {
     inline std::string operator""_b64(const char* x, size_t n) {
@@ -351,6 +392,6 @@ inline namespace literals {
             throw std::invalid_argument{"base64 literal is not base64"};
         return from_base64(in);
     }
-}
+}  // namespace literals
 
-}
+}  // namespace oxenc
