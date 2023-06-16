@@ -1,3 +1,27 @@
+oxen-encoding (1.0.7-1~deb12) bookworm; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Compilation workarounds for MSVC
+  * Add missing header
+  * Add missing stdexcept header to base converters
+
+  [ Sergey Fedorov ]
+  * Correct header to include for Apple is AvailabilityMacros.h
+  * Use numerical macOS version in a macro
+
+  [ Jason Rhinelander ]
+  * Add clang-format rules and reformat
+  * Add std::string-builder support to bt producers
+  * Fix wine usage in windows build
+
+  [ Sean Darcy ]
+  * silence conversion warnings
+
+  [ Jason Rhinelander ]
+  * Version bump
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 16 Jun 2023 18:26:37 -0300
+
 oxen-encoding (1.0.6-1~deb12) bookworm; urgency=medium
 
   * Fix dict consumer's next_dict()
