@@ -14,15 +14,15 @@
 #include <variant>
 
 #ifdef __APPLE__
-#  include <AvailabilityMacros.h>
-#  if defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED < 101400)
-#    define BROKEN_APPLE_VARIANT
-#  endif
+#include <AvailabilityMacros.h>
+#if defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED < 101400)
+#define BROKEN_APPLE_VARIANT
+#endif
 #endif
 
 #ifndef BROKEN_APPLE_VARIANT
 
-namespace var = std; // Oh look, actual C++17 support
+namespace var = std;  // Oh look, actual C++17 support
 
 #else
 
@@ -38,42 +38,50 @@ namespace var {
 // to the std:: implementation.
 template <typename T, typename... Types>
 constexpr T& get(std::variant<Types...>& var) {
-    if (auto* v = std::get_if<T>(&var)) return *v;
+    if (auto* v = std::get_if<T>(&var))
+        return *v;
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <typename T, typename... Types>
 constexpr const T& get(const std::variant<Types...>& var) {
-    if (auto* v = std::get_if<T>(&var)) return *v;
+    if (auto* v = std::get_if<T>(&var))
+        return *v;
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <typename T, typename... Types>
 constexpr const T&& get(const std::variant<Types...>&& var) {
-    if (auto* v = std::get_if<T>(&var)) return std::move(*v);
+    if (auto* v = std::get_if<T>(&var))
+        return std::move(*v);
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <typename T, typename... Types>
 constexpr T&& get(std::variant<Types...>&& var) {
-    if (auto* v = std::get_if<T>(&var)) return std::move(*v);
+    if (auto* v = std::get_if<T>(&var))
+        return std::move(*v);
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <size_t I, typename... Types>
 constexpr auto& get(std::variant<Types...>& var) {
-    if (auto* v = std::get_if<I>(&var)) return *v;
+    if (auto* v = std::get_if<I>(&var))
+        return *v;
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <size_t I, typename... Types>
 constexpr const auto& get(const std::variant<Types...>& var) {
-    if (auto* v = std::get_if<I>(&var)) return *v;
+    if (auto* v = std::get_if<I>(&var))
+        return *v;
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <size_t I, typename... Types>
 constexpr const auto&& get(const std::variant<Types...>&& var) {
-    if (auto* v = std::get_if<I>(&var)) return std::move(*v);
+    if (auto* v = std::get_if<I>(&var))
+        return std::move(*v);
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 template <size_t I, typename... Types>
 constexpr auto&& get(std::variant<Types...>&& var) {
-    if (auto* v = std::get_if<I>(&var)) return std::move(*v);
+    if (auto* v = std::get_if<I>(&var))
+        return std::move(*v);
     throw std::runtime_error{"Bad variant access -- variant does not contain the requested type"};
 }
 
@@ -96,10 +104,12 @@ constexpr auto visit_helper(Visitor&& vis, Variant&& var, std::index_sequence<Is
 // don't need it).
 template <class Visitor, class Variant>
 constexpr auto visit(Visitor&& vis, Variant&& var) {
-    return visit_helper(std::forward<Visitor>(vis), std::forward<Variant>(var),
+    return visit_helper(
+            std::forward<Visitor>(vis),
+            std::forward<Variant>(var),
             std::make_index_sequence<std::variant_size_v<std::remove_reference_t<Variant>>>{});
 }
 
-} // namespace var
+}  // namespace var
 
 #endif

@@ -105,7 +105,7 @@ local full_llvm(version) = debian_pipeline(
       submodules,
       {
         name: 'build',
-        image: docker_base + 'debian-win32-cross',
+        image: docker_base + 'debian-win32-cross-wine',
         pull: 'always',
         commands: [
           'echo "Building on ${DRONE_STAGE_MACHINE}"',
@@ -120,7 +120,7 @@ local full_llvm(version) = debian_pipeline(
           'cmake .. -G Ninja -DCMAKE_CXX_COMPILER=/usr/bin/x86_64-w64-mingw32-g++-posix -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_CXX_COMPILER_LAUNCHER=ccache',
           'ninja -v',
           'export WINEPATH="$$(dirname $$(/usr/bin/x86_64-w64-mingw32-g++-posix -print-libgcc-file-name));/usr/x86_64-w64-mingw32/lib"',
-          'wine64-stable ./tests/tests.exe --use-colour yes',
+          'WINEDEBUG=-all wine-stable ./tests/tests.exe --use-colour yes',
         ],
       },
     ],
