@@ -1,68 +1,80 @@
 #pragma once
+#include <array>
+#include <cassert>
+#include <iterator>
+#include <stdexcept>
 #include <string>
 #include <string_view>
-#include <array>
-#include <iterator>
-#include <cassert>
+
 #include "byte_type.h"
 
 namespace oxenc {
 
 namespace detail {
 
-/// Compile-time generated lookup tables for base32z conversion.  This is case insensitive (though
-/// for byte -> b32z conversion we always produce lower case).
-struct b32z_table {
-    // Store the 0-31 decoded value of every possible char; all the chars that aren't valid are set
-    // to 0.  (If you don't trust your data, check it with is_base32z first, which uses these 0's
-    // to detect invalid characters -- which is why we want a full 256 element array).
-    char from_b32z_lut[256];
-    // Store the encoded character of every 0-31 (5 bit) value.
-    char to_b32z_lut[32];
+    /// Compile-time generated lookup tables for base32z conversion.  This is case insensitive
+    /// (though for byte -> b32z conversion we always produce lower case).
+    struct b32z_table {
+        // Store the 0-31 decoded value of every possible char; all the chars that aren't valid are
+        // set to 0.  (If you don't trust your data, check it with is_base32z first, which uses
+        // these 0's to detect invalid characters -- which is why we want a full 256 element array).
+        char from_b32z_lut[256];
+        // Store the encoded character of every 0-31 (5 bit) value.
+        char to_b32z_lut[32];
 
-    // constexpr constructor that fills out the above (and should do it at compile time for any half
-    // decent compiler).
-    constexpr b32z_table() noexcept : from_b32z_lut{},
-              to_b32z_lut{
-                  'y', 'b', 'n', 'd', 'r', 'f', 'g', '8', 'e', 'j', 'k', 'm', 'c', 'p', 'q', 'x',
-                  'o', 't', '1', 'u', 'w', 'i', 's', 'z', 'a', '3', '4', '5', 'h', '7', '6', '9'
-              }
-    {
-        for (unsigned char c = 0; c < 32; c++) {
-            unsigned char x = to_b32z_lut[c];
-            from_b32z_lut[x] = c;
-            if (x >= 'a' && x <= 'z')
-                from_b32z_lut[x - 'a' + 'A'] = c;
+        // constexpr constructor that fills out the above (and should do it at compile time for any
+        // half decent compiler).
+        constexpr b32z_table() noexcept :
+                from_b32z_lut{}, to_b32z_lut{'y', 'b', 'n', 'd', 'r', 'f', 'g', '8', 'e', 'j', 'k',
+                                             'm', 'c', 'p', 'q', 'x', 'o', 't', '1', 'u', 'w', 'i',
+                                             's', 'z', 'a', '3', '4', '5', 'h', '7', '6', '9'} {
+            for (unsigned char c = 0; c < 32; c++) {
+                unsigned char x = to_b32z_lut[c];
+                from_b32z_lut[x] = c;
+                if (x >= 'a' && x <= 'z')
+                    from_b32z_lut[x - 'a' + 'A'] = c;
+            }
         }
-    }
-    // Convert a b32z encoded character into a 0-31 value
-    constexpr char from_b32z(unsigned char c) const noexcept { return from_b32z_lut[c]; }
-    // Convert a 0-31 value into a b32z encoded character
-    constexpr char to_b32z(unsigned char b) const noexcept { return to_b32z_lut[b]; }
-} constexpr b32z_lut;
+        // Convert a b32z encoded character into a 0-31 value
+        constexpr char from_b32z(unsigned char c) const noexcept { return from_b32z_lut[c]; }
+        // Convert a 0-31 value into a b32z encoded character
+        constexpr char to_b32z(unsigned char b) const noexcept { return to_b32z_lut[b]; }
+    };
+    inline constexpr b32z_table b32z_lut{};
 
-// This main point of this static assert is to force the compiler to compile-time build the constexpr tables.
-static_assert(b32z_lut.from_b32z('w') == 20 && b32z_lut.from_b32z('T') == 17 && b32z_lut.to_b32z(5) == 'f', "");
+    // This main point of this static assert is to force the compiler to compile-time build the
+    // constexpr tables.
+    static_assert(
+            b32z_lut.from_b32z('w') == 20 && b32z_lut.from_b32z('T') == 17 &&
+                    b32z_lut.to_b32z(5) == 'f',
+            "");
 
-} // namespace detail
+}  // namespace detail
 
-/// Returns the number of characters required to encode a base32z string from the given number of bytes.
-inline constexpr size_t to_base32z_size(size_t byte_size) { return (byte_size*8 + 4) / 5; } // ⌈bits/5⌉ because 5 bits per byte
+/// Returns the number of characters required to encode a base32z string from the given number of
+/// bytes.
+inline constexpr size_t to_base32z_size(size_t byte_size) {
+    return (byte_size * 8 + 4) / 5;
+}  // ⌈bits/5⌉ because 5 bits per byte
 /// Returns the (maximum) number of bytes required to decode a base32z string of the given size.
-inline constexpr size_t from_base32z_size(size_t b32z_size) { return b32z_size*5 / 8; } // ⌊bits/8⌋
+inline constexpr size_t from_base32z_size(size_t b32z_size) {
+    return b32z_size * 5 / 8;
+}  // ⌊bits/8⌋
 
 /// Iterable object for on-the-fly base32z encoding.  Used internally, but also particularly useful
 /// when converting from one encoding to another.
 template <typename InputIt>
 struct base32z_encoder final {
-private:
+  private:
     InputIt _it, _end;
-    static_assert(sizeof(decltype(*_it)) == 1, "base32z_encoder requires chars/bytes input iterator");
+    static_assert(
+            sizeof(decltype(*_it)) == 1, "base32z_encoder requires chars/bytes input iterator");
     // Number of bits held in r; will always be >= 5 until we are at the end.
     int bits{_it != _end ? 8 : 0};
     // Holds bits of data we've already read, which might belong to current or next chars
     uint_fast16_t r{bits ? static_cast<unsigned char>(*_it) : (unsigned char)0};
-public:
+
+  public:
     using iterator_category = std::input_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = char;
@@ -95,7 +107,11 @@ public:
         }
         return *this;
     }
-    base32z_encoder operator++(int) { base32z_encoder copy{*this}; ++*this; return copy; }
+    base32z_encoder operator++(int) {
+        base32z_encoder copy{*this};
+        ++*this;
+        return copy;
+    }
 
     char operator*() {
         // Right-shift off the excess bits we aren't accessing yet
@@ -117,7 +133,9 @@ OutputIt to_base32z(InputIt begin, InputIt end, OutputIt out) {
 template <typename It>
 std::string to_base32z(It begin, It end) {
     std::string base32z;
-    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>) {
+    if constexpr (std::is_base_of_v<
+                          std::random_access_iterator_tag,
+                          typename std::iterator_traits<It>::iterator_category>) {
         using std::distance;
         base32z.reserve(to_base32z_size(distance(begin, end)));
     }
@@ -127,8 +145,12 @@ std::string to_base32z(It begin, It end) {
 
 /// Creates a base32z string from an iterable, std::string-like object
 template <typename CharT>
-std::string to_base32z(std::basic_string_view<CharT> s) { return to_base32z(s.begin(), s.end()); }
-inline std::string to_base32z(std::string_view s) { return to_base32z<>(s); }
+std::string to_base32z(std::basic_string_view<CharT> s) {
+    return to_base32z(s.begin(), s.end());
+}
+inline std::string to_base32z(std::string_view s) {
+    return to_base32z<>(s);
+}
 
 /// Returns true if the given [begin, end) range is an acceptable base32z string: specifically every
 /// character must be in the base32z alphabet, and the string must be a valid encoding length that
@@ -137,11 +159,13 @@ template <typename It>
 constexpr bool is_base32z(It begin, It end) {
     static_assert(sizeof(decltype(*begin)) == 1, "is_base32z requires chars/bytes");
     size_t count = 0;
-    constexpr bool random = std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>;
+    constexpr bool random = std::is_base_of_v<
+            std::random_access_iterator_tag,
+            typename std::iterator_traits<It>::iterator_category>;
     if constexpr (random) {
         using std::distance;
         count = distance(begin, end) % 8;
-        if (count == 1 || count == 3 || count == 6) // see below
+        if (count == 1 || count == 3 || count == 6)  // see below
             return false;
     }
     for (; begin != end; ++begin) {
@@ -165,8 +189,12 @@ constexpr bool is_base32z(It begin, It end) {
 
 /// Returns true if all elements in the string-like value are base32z characters
 template <typename CharT>
-constexpr bool is_base32z(std::basic_string_view<CharT> s) { return is_base32z(s.begin(), s.end()); }
-constexpr bool is_base32z(std::string_view s) { return is_base32z<>(s); }
+constexpr bool is_base32z(std::basic_string_view<CharT> s) {
+    return is_base32z(s.begin(), s.end());
+}
+constexpr bool is_base32z(std::string_view s) {
+    return is_base32z<>(s);
+}
 
 /// Iterable object for on-the-fly base32z decoding.  Used internally, but also particularly useful
 /// when converting from one encoding to another.  The input range must be a valid base32z
@@ -178,12 +206,13 @@ constexpr bool is_base32z(std::string_view s) { return is_base32z<>(s); }
 /// \ff\ff output string.
 template <typename InputIt>
 struct base32z_decoder final {
-private:
+  private:
     InputIt _it, _end;
-    static_assert(sizeof(decltype(*_it)) == 1, "base32z_decoder requires chars/bytes input iterator");
+    static_assert(
+            sizeof(decltype(*_it)) == 1, "base32z_decoder requires chars/bytes input iterator");
     uint_fast16_t in = 0;
-    int bits = 0; // number of bits loaded into `in`; will be in [8, 12] until we hit the end
-public:
+    int bits = 0;  // number of bits loaded into `in`; will be in [8, 12] until we hit the end
+  public:
     using iterator_category = std::input_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = char;
@@ -207,16 +236,17 @@ public:
             load_byte();
         return *this;
     }
-    base32z_decoder operator++(int) { base32z_decoder copy{*this}; ++*this; return copy; }
-
-    char operator*() {
-        return in >> (bits - 8);
+    base32z_decoder operator++(int) {
+        base32z_decoder copy{*this};
+        ++*this;
+        return copy;
     }
 
-private:
+    char operator*() { return in >> (bits - 8); }
+
+  private:
     void load_in() {
-        in = in << 5
-            | detail::b32z_lut.from_b32z(static_cast<unsigned char>(*_it));
+        in = in << 5 | detail::b32z_lut.from_b32z(static_cast<unsigned char>(*_it));
         bits += 5;
     }
 
@@ -258,7 +288,9 @@ OutputIt from_base32z(InputIt begin, InputIt end, OutputIt out) {
 template <typename It>
 std::string from_base32z(It begin, It end) {
     std::string bytes;
-    if constexpr (std::is_base_of_v<std::random_access_iterator_tag, typename std::iterator_traits<It>::iterator_category>) {
+    if constexpr (std::is_base_of_v<
+                          std::random_access_iterator_tag,
+                          typename std::iterator_traits<It>::iterator_category>) {
         using std::distance;
         bytes.reserve(from_base32z_size(distance(begin, end)));
     }
@@ -269,8 +301,12 @@ std::string from_base32z(It begin, It end) {
 /// Converts base32z digits from a std::string-like object into a std::string of bytes.  Undefined
 /// behaviour if any characters are not valid (case-insensitive) base32z characters.
 template <typename CharT>
-std::string from_base32z(std::basic_string_view<CharT> s) { return from_base32z(s.begin(), s.end()); }
-inline std::string from_base32z(std::string_view s) { return from_base32z<>(s); }
+std::string from_base32z(std::basic_string_view<CharT> s) {
+    return from_base32z(s.begin(), s.end());
+}
+inline std::string from_base32z(std::string_view s) {
+    return from_base32z<>(s);
+}
 
 inline namespace literals {
     inline std::string operator""_b32z(const char* x, size_t n) {
@@ -279,6 +315,6 @@ inline namespace literals {
             throw std::invalid_argument{"base32z literal is not base32z"};
         return from_base32z(in);
     }
-}
+}  // namespace literals
 
-}
+}  // namespace oxenc
