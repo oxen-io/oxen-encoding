@@ -239,20 +239,25 @@ TEST_CASE("bt allocation-free consumer", "[bt][dict][list][consumer]") {
             std::make_pair("b"sv, std::make_tuple(1, 2, 3)));
 }
 
-TEST_CASE("bt allocation-free list producer", "[bt][list][producer]") {
+TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
 
-    char smallbuf[16];
-    bt_list_producer toosmall{smallbuf, 16};  // le, total = 2
-    toosmall += 42;                           // i42e, total = 6
-    toosmall += "abcdefgh";                   // 8:abcdefgh, total=16
-    CHECK(toosmall.view() == "li42e8:abcdefghe");
+    auto external_buffer = GENERATE(true, false);
 
-    CHECK_THROWS_AS(toosmall += "", std::length_error);
+    if (external_buffer) {
+        char smallbuf[16];
+        bt_list_producer toosmall{smallbuf, 16};  // le, total = 2
+        toosmall += 42;                           // i42e, total = 6
+        toosmall += "abcdefgh";                   // 8:abcdefgh, total=16
+        CHECK(toosmall.view() == "li42e8:abcdefghe");
+
+        CHECK_THROWS_AS(toosmall += "", std::length_error);
+    }
 
     char buf[1024];
-    bt_list_producer lp{buf, sizeof(buf)};
+    auto lp = external_buffer ? bt_list_producer{buf, sizeof(buf)} : bt_list_producer{};
     CHECK(lp.view() == "le");
-    CHECK((void*)lp.end() == (void*)(buf + 2));
+    if (external_buffer)
+        CHECK((void*)lp.end() == (void*)(buf + 2));
 
     lp.append("abc");
     CHECK(lp.view() == "l3:abce");
@@ -273,6 +278,8 @@ TEST_CASE("bt allocation-free list producer", "[bt][list][producer]") {
         sublist2 += "";
         CHECK(sublist2.view() == "li0e0:e");
         CHECK(lp.view() == "l3:abci42ei1ei17ei-999eli0e0:ee");
+
+        CHECK_THROWS_AS(std::move(sublist2).str(), std::logic_error);
     }
 
     lp.append_list().append_list().append_list() += "omg"s;
@@ -297,14 +304,28 @@ TEST_CASE("bt allocation-free list producer", "[bt][list][producer]") {
               "l3:abci42ei1ei17ei-999eli0e0:elll3:omgeeed3:foo3:bar1:gi42e1:hld1:ad1:"
               "Ali999eeeeeee");
     }
+
+    if (external_buffer) {
+        CHECK_THROWS_AS(std::move(lp).str(), std::logic_error);
+    } else {
+        auto str = std::move(lp).str();
+        CHECK(str ==
+              "l3:abci42ei1ei17ei-999eli0e0:elll3:omgeeed3:foo3:bar1:gi42e1:hld1:ad1:"
+              "Ali999eeeeeee");
+
+        CHECK(lp.view() == "le");
+    }
 }
 
-TEST_CASE("bt allocation-free dict producer", "[bt][dict][producer]") {
+TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
+
+    auto external_buffer = GENERATE(true, false);
 
     char buf[1024];
-    bt_dict_producer dp{buf, sizeof(buf)};
+    auto dp = external_buffer ? bt_dict_producer{buf, sizeof(buf)} : bt_dict_producer{};
     CHECK(dp.view() == "de");
-    CHECK((void*)dp.end() == (void*)(buf + 2));
+    if (external_buffer)
+        CHECK((void*)dp.end() == (void*)(buf + 2));
 
     dp.append("foo", "bar");
     CHECK(dp.view() == "d3:foo3:bare");
@@ -328,12 +349,20 @@ TEST_CASE("bt allocation-free dict producer", "[bt][dict][producer]") {
 
     CHECK(dp.view() ==
           "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+
+    if (external_buffer) {
+        CHECK_THROWS_AS(std::move(dp).str(), std::logic_error);
+    } else {
+        CHECK(std::move(dp).str() ==
+              "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+
+        CHECK(dp.view() == "de");
+    }
 }
 
 TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
 
-    char buf[1024];
-    bt_dict_producer x{buf, sizeof(buf)};
+    bt_dict_producer x;
 
     bt_dict more{{"b", 1}, {"c", bt_dict{{"d", "e"}, {"f", bt_list{{1, 2, 3}}}}}};
     bt_dict tiny{{"a", ""}};
@@ -345,7 +374,7 @@ TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
 
     CHECK(x.view() == "d1:ai42e1:xd1:a0:e1:yld1:a0:ee1:zd1:bi1e1:cd1:d1:e1:fli1ei2ei3eeeee");
 
-    bt_list_producer y{buf, sizeof(buf)};
+    bt_list_producer y;
     y.append(123);
     y.append_bt(more);
     y.append_bt(bt_value{tiny});
