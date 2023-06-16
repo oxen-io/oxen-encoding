@@ -16,7 +16,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 project(oxenc
-    VERSION 1.0.6
+    VERSION 1.0.7
     DESCRIPTION "oxenc - Base 16/32/64 and Bittorrent Encoding/Decoding Header Only Library"
     LANGUAGES CXX)
 
