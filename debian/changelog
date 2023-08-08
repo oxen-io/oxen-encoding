@@ -1,3 +1,9 @@
+oxen-encoding (1.0.7-2) sid; urgency=medium
+
+  * Add missing cstdint header for uintN_t typedefs
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 08 Aug 2023 15:52:33 -0300
+
 oxen-encoding (1.0.7-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
