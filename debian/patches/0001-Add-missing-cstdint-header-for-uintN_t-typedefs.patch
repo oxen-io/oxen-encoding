@@ -1,0 +1,46 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Mon, 31 Jul 2023 18:57:25 -0300
+Subject: Add missing cstdint header for uintN_t typedefs
+
+---
+ oxenc/base32z.h | 1 +
+ oxenc/base64.h  | 1 +
+ oxenc/hex.h     | 1 +
+ 3 files changed, 3 insertions(+)
+
+diff --git a/oxenc/base32z.h b/oxenc/base32z.h
+index 406870c..e90978c 100644
+--- a/oxenc/base32z.h
++++ b/oxenc/base32z.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include <array>
+ #include <cassert>
++#include <cstdint>
+ #include <iterator>
+ #include <stdexcept>
+ #include <string>
+diff --git a/oxenc/base64.h b/oxenc/base64.h
+index 14cce46..bec7841 100644
+--- a/oxenc/base64.h
++++ b/oxenc/base64.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include <array>
+ #include <cassert>
++#include <cstdint>
+ #include <iterator>
+ #include <stdexcept>
+ #include <string>
+diff --git a/oxenc/hex.h b/oxenc/hex.h
+index 59540bb..f8f6db1 100644
+--- a/oxenc/hex.h
++++ b/oxenc/hex.h
+@@ -1,6 +1,7 @@
+ #pragma once
+ #include <array>
+ #include <cassert>
++#include <cstdint>
+ #include <iterator>
+ #include <stdexcept>
+ #include <string>
