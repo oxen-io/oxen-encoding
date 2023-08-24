@@ -3,6 +3,7 @@
 #include <cassert>
 #include <charconv>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
