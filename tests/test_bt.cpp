@@ -256,8 +256,14 @@ TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
     char buf[1024];
     auto lp = external_buffer ? bt_list_producer{buf, sizeof(buf)} : bt_list_producer{};
     CHECK(lp.view() == "le");
+    size_t orig_cap = 0;
     if (external_buffer)
         CHECK((void*)lp.end() == (void*)(buf + 2));
+    else {
+        lp.reserve(500);
+        orig_cap = lp.str_ref().capacity();
+        CHECK(orig_cap >= 500);
+    }
 
     lp.append("abc");
     CHECK(lp.view() == "l3:abce");
@@ -308,11 +314,14 @@ TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
     if (external_buffer) {
         CHECK_THROWS_AS(std::move(lp).str(), std::logic_error);
     } else {
+        CHECK(orig_cap == lp.str_ref().capacity());
         auto str = std::move(lp).str();
+        CHECK(str.capacity() == orig_cap);
         CHECK(str ==
               "l3:abci42ei1ei17ei-999eli0e0:elll3:omgeeed3:foo3:bar1:gi42e1:hld1:ad1:"
               "Ali999eeeeeee");
 
+        CHECK(lp.str_ref().capacity() < 32); // SSO sizes vary across compilers
         CHECK(lp.view() == "le");
     }
 }
@@ -324,8 +333,14 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
     char buf[1024];
     auto dp = external_buffer ? bt_dict_producer{buf, sizeof(buf)} : bt_dict_producer{};
     CHECK(dp.view() == "de");
+    size_t orig_cap = 0;
     if (external_buffer)
         CHECK((void*)dp.end() == (void*)(buf + 2));
+    else {
+        dp.reserve(500);
+        orig_cap = dp.str_ref().capacity();
+        CHECK(orig_cap >= 500);
+    }
 
     dp.append("foo", "bar");
     CHECK(dp.view() == "d3:foo3:bare");
@@ -353,9 +368,13 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
     if (external_buffer) {
         CHECK_THROWS_AS(std::move(dp).str(), std::logic_error);
     } else {
-        CHECK(std::move(dp).str() ==
+        CHECK(orig_cap == dp.str_ref().capacity());
+        auto str = std::move(dp).str();
+        CHECK(str ==
               "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+        CHECK(str.capacity() == orig_cap);
 
+        CHECK(dp.str_ref().capacity() < 32); // SSO sizes vary across compilers
         CHECK(dp.view() == "de");
     }
 }

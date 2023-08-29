@@ -203,6 +203,25 @@ class bt_list_producer {
         return ret;
     }
 
+    /// Returns a reference to the `std::string`, when in string-builder mode.  Unlike `str()`, this
+    /// method *can* be used on a subdict/sublist, but always returns a reference to the root
+    /// object's string (unlike `.view()` which just returns the view of the current sub-producer).
+    const std::string& str_ref() {
+        if (auto* p = parent())
+            return p->str_ref();
+        if (auto* s = std::get_if<std::string>(&out))
+            return *s;
+        throw std::logic_error{"Cannot call bt_producer .str_ref() when using an external buffer"};
+    }
+
+    /// Calls `.reserve()` on the underlying std::string, if using string-builder mode.
+    void reserve(size_t new_cap) {
+        if (auto* p = parent())
+            return p->reserve(new_cap);
+        if (auto* s = std::get_if<std::string>(&out))
+            s->reserve(new_cap);
+    }
+
     /// Returns the end position in the buffer.  (This is primarily useful for external buffer
     /// mode, but still works in string mode).
     const char* end() const {
@@ -351,6 +370,18 @@ class bt_dict_producer : bt_list_producer {
         last_key = {};
 #endif
         return std::move(*this).bt_list_producer::str();
+    }
+
+    /// Returns a reference to the `std::string`, when in string-builder mode.  Unlike `str()`, this
+    /// method *can* be used on a subdict/sublist, but always returns a reference to the root
+    /// object's string (unlike `.view()` which just returns the view of the current sub-producer).
+    const std::string& str_ref() {
+        return bt_list_producer::str_ref();
+    }
+
+    /// Calls `.reserve()` on the underlying std::string, if using string-builder mode.
+    void reserve(size_t new_cap) {
+        bt_list_producer::reserve(new_cap);
     }
 
     /// Returns the end position in the buffer.
