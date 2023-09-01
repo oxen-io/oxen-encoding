@@ -198,6 +198,10 @@ std::string to_base64(std::basic_string_view<CharT> s) {
 inline std::string to_base64(std::string_view s) {
     return to_base64<>(s);
 }
+template <typename CharT>
+std::string to_base64(const std::basic_string<CharT>& s) {
+    return to_base64(s.begin(), s.end());
+}
 
 /// Creates a base64 string from an iterable, std::string-like object.  The string will not be
 /// padded.
@@ -384,6 +388,10 @@ std::string from_base64(std::basic_string_view<CharT> s) {
 }
 inline std::string from_base64(std::string_view s) {
     return from_base64<>(s);
+}
+template <typename CharT>
+std::string from_base64(const std::basic_string<CharT>& s) {
+    return from_base64(s.begin(), s.end());
 }
 
 inline namespace literals {

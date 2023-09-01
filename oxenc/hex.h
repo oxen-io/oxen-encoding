@@ -122,6 +122,10 @@ std::string to_hex(std::basic_string_view<CharT> s) {
 inline std::string to_hex(std::string_view s) {
     return to_hex<>(s);
 }
+template <typename CharT>
+std::string to_hex(const std::basic_string<CharT>& s) {
+    return to_hex(s.begin(), s.end());
+}
 
 /// Returns true if the given value is a valid hex digit.
 template <typename CharT>
@@ -260,6 +264,10 @@ std::string from_hex(std::basic_string_view<CharT> s) {
 }
 inline std::string from_hex(std::string_view s) {
     return from_hex<>(s);
+}
+template <typename CharT>
+std::string from_hex(const std::basic_string<CharT>& s) {
+    return from_hex(s.begin(), s.end());
 }
 
 inline namespace literals {
