@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <charconv>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -251,6 +252,14 @@ class bt_list_producer {
         append_intermediate_ends();
     }
 
+    /// Appends an optional value: the value will be appended as if by calling `.append(*val)` if
+    /// the optional is set, and otherwise (i.e. if given nullopt) nothing is appended.
+    template <typename T>
+    void append(const std::optional<T>& val) {
+        if (val)
+            append(*val);
+    }
+
     /// Appends a sublist to this list.  Returns a new bt_list_producer that references the parent
     /// list.  The parent cannot be added to until the sublist is destroyed.  This is meant to be
     /// used via RAII:
@@ -363,6 +372,14 @@ class bt_dict_producer : bt_list_producer {
         append_impl(key);
         append_impl(value);
         append_intermediate_ends();
+    }
+
+    /// Appends a key-value pair with an optional value, *if* the optional is set.  If the value is
+    /// nullopt, nothing is appended.
+    template <typename T>
+    void append(std::string_view key, const std::optional<T>& value) {
+        if (value)
+            append(key, *value);
     }
 
     /// Appends pairs from the range [from, to) to the dict.  Elements must have a .first
