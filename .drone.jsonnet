@@ -64,8 +64,8 @@ local full_llvm(version) = debian_pipeline(
 [
   debian_pipeline('Debian sid (amd64)', docker_base + 'debian-sid'),
   debian_pipeline('Debian sid/Debug (amd64)', docker_base + 'debian-sid', build_type='Debug'),
-  clang(13),
-  full_llvm(13),
+  clang(16),
+  full_llvm(16),
   debian_pipeline('Debian buster (amd64)', docker_base + 'debian-buster'),
   debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable/i386'),
   debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64'),
