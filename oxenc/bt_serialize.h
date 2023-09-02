@@ -724,7 +724,7 @@ class bt_list_consumer {
     bt_list_consumer(const bt_list_consumer&) = default;
     bt_list_consumer& operator=(const bt_list_consumer&) = default;
 
-    /// Get a copy of the current buffer
+    /// Get a view of the current buffer
     std::string_view current_buffer() const { return data; }
 
     /// Returns true if the next value indicates the end of the list
@@ -746,8 +746,12 @@ class bt_list_consumer {
 
     /// Attempt to parse the next value as a string (and advance just past it).  Throws if the next
     /// value is not a string.
-    std::string consume_string() { return std::string{consume_string_view()}; }
-    std::string_view consume_string_view() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::basic_string<CharT> consume_string() {
+        return std::basic_string<CharT>{consume_string_view()};
+    }
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::basic_string_view<CharT> consume_string_view() {
         if (data.empty())
             throw bt_deserialize_invalid{"expected a string, but reached end of data"};
         else if (!is_string())
@@ -755,7 +759,7 @@ class bt_list_consumer {
         std::string_view next{data}, result;
         detail::bt_deserialize<std::string_view>{}(next, result);
         data = next;
-        return result;
+        return std::basic_string_view<CharT>{reinterpret_cast<const CharT*>(result.data()), result.size()};
     };
 
     /// Attempts to parse the next value as an integer (and advance just past it).  Throws if the
@@ -830,7 +834,8 @@ class bt_list_consumer {
     /// entire thing.  This is recursive into both lists and dicts and likely to be quite
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::string_view consume_list_data() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::basic_string_view<CharT> consume_list_data() {
         auto orig = data;
         if (data.size() < 2 || !is_list())
             throw bt_deserialize_invalid_type{"next bt value is not a list"};
@@ -844,14 +849,15 @@ class bt_list_consumer {
         }
         data.remove_prefix(1);  // Back out from the sublist, consume the "e"
         orig.remove_suffix(data.size());
-        return orig;
+        return {reinterpret_cast<const CharT*>(orig.data()), orig.size()};
     }
 
     /// Attempts to parse the next value as a dict and returns the string_view that contains the
     /// entire thing.  This is recursive into both lists and dicts and likely to be quite
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::string_view consume_dict_data() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::basic_string_view<CharT> consume_dict_data() {
         auto orig = data;
         if (data.size() < 2 || !is_dict())
             throw bt_deserialize_invalid_type{"next bt value is not a dict"};
@@ -867,7 +873,7 @@ class bt_list_consumer {
         }
         data.remove_prefix(1);  // Back out of the dict, consume the "e"
         orig.remove_suffix(data.size());
-        return orig;
+        return {reinterpret_cast<const CharT*>(orig.data()), orig.size()};
     }
 
     /// Shortcut for wrapping `consume_list_data()` in a new list consumer
@@ -916,6 +922,14 @@ class bt_dict_consumer : private bt_list_consumer {
             throw std::runtime_error{"Cannot create a bt_dict_consumer with non-dict data"};
         data.remove_prefix(1);
     }
+    template <typename CharT, typename = std::enable_if_t<sizeof(CharT) == 1 && !std::is_same_v<CharT, char>>>
+    bt_dict_consumer(std::basic_string_view<CharT> data)
+        : bt_dict_consumer{std::string_view{reinterpret_cast<const char*>(data.data()), data.size()}}
+    {}
+    template <typename CharT, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    bt_dict_consumer(const std::basic_string<CharT>& data)
+        : bt_dict_consumer{std::string_view{reinterpret_cast<const char*>(data.data()), data.size()}}
+    {}
 
     /// Copy constructor.  Making a copy copies the current position so can be used for multipass
     /// iteration through a list.
@@ -944,19 +958,21 @@ class bt_dict_consumer : private bt_list_consumer {
     /// all of the other consume_* methods.  The value is cached whether called here or by some
     /// other method; accessing it multiple times simple accesses the cache until the next value is
     /// consumed.
-    std::string_view key() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::basic_string_view<CharT> key() {
         if (!consume_key())
             throw bt_deserialize_invalid{"Cannot access next key: at the end of the dict"};
-        return key_;
+        return {reinterpret_cast<const CharT*>(key_.data()), key_.size()};
     }
 
     /// Attempt to parse the next value as a string->string pair (and advance just past it).  Throws
     /// if the next value is not a string.
-    std::pair<std::string_view, std::string_view> next_string() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::pair<std::string_view, std::basic_string_view<CharT>> next_string() {
         if (!is_string())
             throw bt_deserialize_invalid_type{"expected a string, but found "s + data.front()};
-        std::pair<std::string_view, std::string_view> ret;
-        ret.second = bt_list_consumer::consume_string_view();
+        std::pair<std::basic_string_view<CharT>, std::basic_string_view<CharT>> ret;
+        ret.second = bt_list_consumer::consume_string_view<CharT>();
         ret.first = flush_key();
         return ret;
     }
@@ -1017,10 +1033,11 @@ class bt_dict_consumer : private bt_list_consumer {
     /// contains the entire thing.  This is recursive into both lists and dicts and likely to be
     /// quite inefficient for large, nested structures (unless the values only need to be skipped
     /// but aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::pair<std::string_view, std::string_view> next_list_data() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::pair<std::string_view, std::basic_string_view<CharT>> next_list_data() {
         if (data.size() < 2 || !is_list())
             throw bt_deserialize_invalid_type{"next bt dict value is not a list"};
-        return {flush_key(), bt_list_consumer::consume_list_data()};
+        return {flush_key(), bt_list_consumer::consume_list_data<CharT>()};
     }
 
     /// Same as next_list_data(), but wraps the value in a bt_list_consumer for convenience
@@ -1030,10 +1047,11 @@ class bt_dict_consumer : private bt_list_consumer {
     /// contains the entire thing.  This is recursive into both lists and dicts and likely to be
     /// quite inefficient for large, nested structures (unless the values only need to be skipped
     /// but aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::pair<std::string_view, std::string_view> next_dict_data() {
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::pair<std::string_view, std::basic_string_view<CharT>> next_dict_data() {
         if (data.size() < 2 || !is_dict())
             throw bt_deserialize_invalid_type{"next bt dict value is not a dict"};
-        return {flush_key(), bt_list_consumer::consume_dict_data()};
+        return {flush_key(), bt_list_consumer::consume_dict_data<CharT>()};
     }
 
     /// Same as next_dict_data(), but wraps the value in a bt_dict_consumer for convenience
@@ -1069,8 +1087,10 @@ class bt_dict_consumer : private bt_list_consumer {
     ///         value = d.consume_string();
     ///
 
-    auto consume_string_view() { return next_string().second; }
-    auto consume_string() { return std::string{consume_string_view()}; }
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    auto consume_string_view() { return next_string<CharT>().second; }
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    auto consume_string() { return std::basic_string<CharT>{consume_string_view<CharT>()}; }
 
     template <typename IntType>
     auto consume_integer() {
@@ -1097,8 +1117,11 @@ class bt_dict_consumer : private bt_list_consumer {
         next_dict(dict);
     }
 
-    std::string_view consume_list_data() { return next_list_data().second; }
-    std::string_view consume_dict_data() { return next_dict_data().second; }
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::string_view consume_list_data() { return next_list_data<CharT>().second; }
+
+    template <typename CharT = char, typename = std::enable_if_t<sizeof(CharT) == 1>>
+    std::string_view consume_dict_data() { return next_dict_data<CharT>().second; }
 
     /// Shortcut for wrapping `consume_list_data()` in a new list consumer
     bt_list_consumer consume_list_consumer() { return consume_list_data(); }
