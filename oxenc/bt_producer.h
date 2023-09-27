@@ -2,7 +2,9 @@
 
 #include <cassert>
 #include <charconv>
+#include <optional>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
@@ -201,6 +203,25 @@ class bt_list_producer {
         return ret;
     }
 
+    /// Returns a reference to the `std::string`, when in string-builder mode.  Unlike `str()`, this
+    /// method *can* be used on a subdict/sublist, but always returns a reference to the root
+    /// object's string (unlike `.view()` which just returns the view of the current sub-producer).
+    const std::string& str_ref() {
+        if (auto* p = parent())
+            return p->str_ref();
+        if (auto* s = std::get_if<std::string>(&out))
+            return *s;
+        throw std::logic_error{"Cannot call bt_producer .str_ref() when using an external buffer"};
+    }
+
+    /// Calls `.reserve()` on the underlying std::string, if using string-builder mode.
+    void reserve(size_t new_cap) {
+        if (auto* p = parent())
+            return p->reserve(new_cap);
+        if (auto* s = std::get_if<std::string>(&out))
+            s->reserve(new_cap);
+    }
+
     /// Returns the end position in the buffer.  (This is primarily useful for external buffer
     /// mode, but still works in string mode).
     const char* end() const {
@@ -248,6 +269,14 @@ class bt_list_producer {
         while (from != to)
             append_impl(*from++);
         append_intermediate_ends();
+    }
+
+    /// Appends an optional value: the value will be appended as if by calling `.append(*val)` if
+    /// the optional is set, and otherwise (i.e. if given nullopt) nothing is appended.
+    template <typename T>
+    void append(const std::optional<T>& val) {
+        if (val)
+            append(*val);
     }
 
     /// Appends a sublist to this list.  Returns a new bt_list_producer that references the parent
@@ -343,6 +372,18 @@ class bt_dict_producer : bt_list_producer {
         return std::move(*this).bt_list_producer::str();
     }
 
+    /// Returns a reference to the `std::string`, when in string-builder mode.  Unlike `str()`, this
+    /// method *can* be used on a subdict/sublist, but always returns a reference to the root
+    /// object's string (unlike `.view()` which just returns the view of the current sub-producer).
+    const std::string& str_ref() {
+        return bt_list_producer::str_ref();
+    }
+
+    /// Calls `.reserve()` on the underlying std::string, if using string-builder mode.
+    void reserve(size_t new_cap) {
+        bt_list_producer::reserve(new_cap);
+    }
+
     /// Returns the end position in the buffer.
     const char* end() const {
         return bt_list_producer::end();
@@ -362,6 +403,14 @@ class bt_dict_producer : bt_list_producer {
         append_impl(key);
         append_impl(value);
         append_intermediate_ends();
+    }
+
+    /// Appends a key-value pair with an optional value, *if* the optional is set.  If the value is
+    /// nullopt, nothing is appended.
+    template <typename T>
+    void append(std::string_view key, const std::optional<T>& value) {
+        if (value)
+            append(key, *value);
     }
 
     /// Appends pairs from the range [from, to) to the dict.  Elements must have a .first
