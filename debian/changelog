@@ -1,3 +1,15 @@
+oxen-encoding (1.0.8-1~deb10) buster; urgency=medium
+
+  * Add missing cstdint header for uintN_t typedefs
+  * Fix missing <string> header in bt_producer.h
+  * Make {to,from}_{hex,base{64,32z}} take basic_string's
+  * Allow appending an optional
+  * Bump clang/llvm versions
+  * Add `.reserve()` to string-building producers
+  * Version bump
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 27 Sep 2023 19:06:34 -0300
+
 oxen-encoding (1.0.7-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
