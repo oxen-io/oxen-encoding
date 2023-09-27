@@ -1,3 +1,9 @@
+oxen-encoding (1.0.8-1~deb13) trixie; urgency=medium
+
+  * trixie deb
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 27 Sep 2023 19:24:26 -0300
+
 oxen-encoding (1.0.8-1) sid; urgency=medium
 
   * Add missing cstdint header for uintN_t typedefs
