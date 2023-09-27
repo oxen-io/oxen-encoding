@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <iterator>
 #include <stdexcept>
 #include <string>
@@ -150,6 +151,10 @@ std::string to_base32z(std::basic_string_view<CharT> s) {
 }
 inline std::string to_base32z(std::string_view s) {
     return to_base32z<>(s);
+}
+template <typename CharT>
+std::string to_base32z(const std::basic_string<CharT>& s) {
+    return to_base32z(s.begin(), s.end());
 }
 
 /// Returns true if the given [begin, end) range is an acceptable base32z string: specifically every
@@ -306,6 +311,10 @@ std::string from_base32z(std::basic_string_view<CharT> s) {
 }
 inline std::string from_base32z(std::string_view s) {
     return from_base32z<>(s);
+}
+template <typename CharT>
+std::string from_base32z(const std::basic_string<CharT>& s) {
+    return from_base32z(s.begin(), s.end());
 }
 
 inline namespace literals {
