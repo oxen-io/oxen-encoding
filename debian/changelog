@@ -1,3 +1,9 @@
+oxen-encoding (1.0.8-1~ubuntu2310) mantic; urgency=medium
+
+  * rebuild for mantic
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 27 Sep 2023 19:21:59 -0300
+
 oxen-encoding (1.0.8-1~ubuntu2304) lunar; urgency=medium
 
   * Add missing cstdint header for uintN_t typedefs
