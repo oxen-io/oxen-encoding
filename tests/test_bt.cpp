@@ -321,7 +321,7 @@ TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
               "l3:abci42ei1ei17ei-999eli0e0:elll3:omgeeed3:foo3:bar1:gi42e1:hld1:ad1:"
               "Ali999eeeeeee");
 
-        CHECK(lp.str_ref().capacity() < 32); // SSO sizes vary across compilers
+        CHECK(lp.str_ref().capacity() < 32);  // SSO sizes vary across compilers
         CHECK(lp.view() == "le");
     }
 }
@@ -374,7 +374,7 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
               "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
         CHECK(str.capacity() == orig_cap);
 
-        CHECK(dp.str_ref().capacity() < 32); // SSO sizes vary across compilers
+        CHECK(dp.str_ref().capacity() < 32);  // SSO sizes vary across compilers
         CHECK(dp.view() == "de");
     }
 }
@@ -401,6 +401,52 @@ TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
     y.append("~");
 
     CHECK(y.view() == "li123ed1:bi1e1:cd1:d1:e1:fli1ei2ei3eeeed1:a0:eld1:a0:ee1:~e");
+}
+
+TEST_CASE("Require integer/string methods", "[bt][dict][consumer][require]") {
+    auto data = bt_serialize(
+            bt_dict{{"A", 92},
+                    {"C", 64},
+                    {"E", "apple pie"},
+                    {"G", "tomato sauce"},
+                    {"I", 69},
+                    {"K", 420},
+                    {"M", bt_dict{{"Q", "Q"}}}});
+
+    bt_dict_consumer btdp{data};
+
+    int a, c, i, k;
+    std::string e, g;
+    bt_dict bd;
+
+    SECTION("Failure case: key does not exist") {
+        REQUIRE_THROWS(c = btdp.require<int>("B"));
+        REQUIRE_THROWS(btdp.required("B"));
+        REQUIRE(btdp.maybe<std::string>("B") == std::nullopt);
+    }
+
+    SECTION("Failure case: key is not a string") {
+        REQUIRE_THROWS(e = btdp.require<std::string>("C"));
+    }
+
+    SECTION("Failure case: key is not an int") {
+        REQUIRE_THROWS(c = btdp.require<int>("E"));
+    }
+
+    SECTION("Success cases - direct assignment") {
+        REQUIRE_NOTHROW(a = btdp.require<int>("A"));
+        REQUIRE_NOTHROW(c = btdp.require<int>("C"));
+        REQUIRE_NOTHROW(e = btdp.require<std::string>("E"));
+        REQUIRE_NOTHROW(g = btdp.require<std::string>("G"));
+        REQUIRE_NOTHROW(i = btdp.require<int>("I"));
+        REQUIRE_NOTHROW(k = btdp.require<int>("K"));
+        REQUIRE_NOTHROW(bd = btdp.consume<bt_dict>());
+    }
+
+    SECTION("Success cases - string conversion types") {
+        std::basic_string<uint8_t> ustr;
+        REQUIRE_NOTHROW(ustr = btdp.require<std::basic_string<uint8_t>>("E"));
+    }
 }
 
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
