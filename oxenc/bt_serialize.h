@@ -5,6 +5,7 @@
 #include <cstring>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -542,6 +543,15 @@ namespace detail {
         return os;
     }
 
+    // True if the type is a std::string, std::string_view, or some a basic_string<Char> for some
+    // single-byte type Char.
+    template <typename T>
+    constexpr bool is_string_like = false;
+    template <typename Char>
+    inline constexpr bool is_string_like<std::basic_string<Char>> = sizeof(Char) == 1;
+    template <typename Char>
+    inline constexpr bool is_string_like<std::basic_string_view<Char>> = sizeof(Char) == 1;
+
 }  // namespace detail
 
 /// Returns a wrapper around a value reference that can serialize the value directly to an output
@@ -1060,6 +1070,23 @@ class bt_dict_consumer : private bt_list_consumer {
         return key_ == find;
     }
 
+    /// This functions nearly identicalkly to skip_until; it will return if we found an exact match
+    /// but will throw if the key is not found. If we didn't throw, the next `consumer_*()` call
+    /// will return the key-value pair we found.
+    ///
+    /// Two important notes:
+    ///
+    /// - properly encoded bt dicts must have lexicographically sorted keys, and this method assumes
+    ///   that the input is correctly sorted (and thus if we find a greater value then your key does
+    ///   not exist).
+    /// - this is irreversible; you cannot returned to skipped values without reparsing.  (You *can*
+    ///   however, make a copy of the bt_dict_consumer before calling and use the copy to return to
+    ///   the pre-skipped position).
+    void required(std::string_view find) {
+        if (!skip_until(find))
+            throw std::out_of_range{"Key " + std::string{find} + " not found!"};
+    }
+
     /// The `consume_*` functions are wrappers around next_whatever that discard the returned key.
     ///
     /// Intended for use with skip_until such as:
@@ -1104,6 +1131,51 @@ class bt_dict_consumer : private bt_list_consumer {
     bt_list_consumer consume_list_consumer() { return consume_list_data(); }
     /// Shortcut for wrapping `consume_dict_data()` in a new dict consumer
     bt_dict_consumer consume_dict_consumer() { return consume_dict_data(); }
+
+    /// Consumes a value into the given type (string_view, string, integer, bt_dict_consumer, etc.).
+    /// This is a shortcut for calling consume_string, consume_integer, etc. based on the templated
+    /// type.
+    template <typename T>
+    T consume() {
+        if constexpr (std::is_integral_v<T>)
+            return consume_integer<T>();
+        else if constexpr (std::is_same_v<T, std::string_view>)
+            return consume_string_view();
+        else if constexpr (detail::is_string_like<T>) {
+            auto sv = consume_string_view();
+            return T{reinterpret_cast<const typename T::value_type*>(sv.data()), sv.size()};
+        } else if constexpr (std::is_same_v<T, bt_dict>)
+            return consume_dict();
+        else if constexpr (std::is_same_v<T, bt_list>)
+            return consume_list();
+        else if constexpr (std::is_same_v<T, bt_dict_consumer>)
+            return consume_dict_consumer();
+        else {
+            static_assert(std::is_same_v<T, bt_list_consumer>, "Unsupported consume type");
+            return consume_list_consumer();
+        }
+    }
+
+    /// Advances to a given key (as if by calling `skip_until`) and then throws if the key was not
+    /// found; otherwise returns the value parsed into the given type.
+    template <typename T>
+    T require(std::string_view key) {
+        required(key);
+        if (!skip_until(key))
+            throw std::out_of_range{"Key " + std::string{key} + " not found!"};
+        return consume<T>();
+    }
+
+    /// Advances to a given key (as if by calling `skip_until`) and then returns std::nullopt if the
+    /// key was not found; otherwise returns the value parsed into the given type.  Note that this
+    /// will still throw if the key exists but has an incompatible value (e.g. calling
+    /// `d.maybe<int>("x")` when the value at "x" is a string).
+    template <typename T>
+    std::optional<T> maybe(std::string_view key) {
+        if (!skip_until(key))
+            return std::nullopt;
+        return consume<T>();
+    }
 };
 
 inline bt_dict_consumer bt_list_consumer::consume_dict_consumer() {

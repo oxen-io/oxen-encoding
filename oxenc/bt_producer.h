@@ -355,9 +355,7 @@ class bt_dict_producer : bt_list_producer {
     /// Returns a string_view into the currently serialized data buffer.  Note that the returned
     /// view includes the `e` dict end serialization markers which will be overwritten if the dict
     /// (or an active sublist/subdict) is appended to.
-    std::string_view view() const {
-        return bt_list_producer::view();
-    }
+    std::string_view view() const { return bt_list_producer::view(); }
 
     /// Extracts the string, when not using buffer mode.  This is only usable on the root
     /// list/dict producer, and may only be used in rvalue context, as it destroys the internal
@@ -375,19 +373,13 @@ class bt_dict_producer : bt_list_producer {
     /// Returns a reference to the `std::string`, when in string-builder mode.  Unlike `str()`, this
     /// method *can* be used on a subdict/sublist, but always returns a reference to the root
     /// object's string (unlike `.view()` which just returns the view of the current sub-producer).
-    const std::string& str_ref() {
-        return bt_list_producer::str_ref();
-    }
+    const std::string& str_ref() { return bt_list_producer::str_ref(); }
 
     /// Calls `.reserve()` on the underlying std::string, if using string-builder mode.
-    void reserve(size_t new_cap) {
-        bt_list_producer::reserve(new_cap);
-    }
+    void reserve(size_t new_cap) { bt_list_producer::reserve(new_cap); }
 
     /// Returns the end position in the buffer.
-    const char* end() const {
-        return bt_list_producer::end();
-    }
+    const char* end() const { return bt_list_producer::end(); }
 
     /// Appends a key-value pair with a string or integer value.  The key must be > the last key
     /// added, but this is only enforced (with an assertion) in debug builds.
