@@ -679,6 +679,9 @@ Tuple get_tuple(const bt_value& x) {
     return get_tuple<Tuple>(var::get<bt_list>(static_cast<const bt_variant&>(x)));
 }
 
+class bt_dict_consumer;
+class bt_list_consumer;
+
 namespace detail {
     template <typename T, typename It>
     void get_tuple_impl_one(T& t, It& it) {
@@ -709,9 +712,26 @@ namespace detail {
         auto it = l.begin();
         (get_tuple_impl_one(std::get<Is>(t), it), ...);
     }
-}  // namespace detail
 
-class bt_dict_consumer;
+    template <typename T, typename Consumer>
+    T consume_impl(Consumer& c) {
+        if constexpr (std::is_integral_v<T>)
+            return c.template consume_integer<T>();
+        else if constexpr (detail::is_string_like<T>)
+            return T{c.template consume_string_view<typename T::value_type>()};
+        else if constexpr (std::is_same_v<T, bt_dict>)
+            return c.consume_dict();
+        else if constexpr (std::is_same_v<T, bt_list>)
+            return c.consume_list();
+        else if constexpr (std::is_same_v<T, bt_dict_consumer>)
+            return c.consume_dict_consumer();
+        else {
+            static_assert(std::is_same_v<T, bt_list_consumer>, "Unsupported consume type");
+            return c.consume_list_consumer();
+        }
+    }
+
+}  // namespace detail
 
 /// Class that allows you to walk through a bt-encoded list in memory without copying or allocating
 /// memory.  It accesses existing memory directly and so the caller must ensure that the referenced
@@ -766,20 +786,7 @@ class bt_list_consumer {
     /// type.
     template <typename T>
     T consume() {
-        if constexpr (std::is_integral_v<T>)
-            return consume_integer<T>();
-        else if constexpr (detail::is_string_like<T>)
-            return T{consume_string_view<typename T::value_type>()};
-        else if constexpr (std::is_same_v<T, bt_dict>)
-            return consume_dict();
-        else if constexpr (std::is_same_v<T, bt_list>)
-            return consume_list();
-        else if constexpr (std::is_same_v<T, bt_dict_consumer>)
-            return consume_dict_consumer();
-        else {
-            static_assert(std::is_same_v<T, bt_list_consumer>, "Unsupported consume type");
-            return consume_list_consumer();
-        }
+        return detail::consume_impl<T>(*this);
     }
 
     /// Attempt to parse the next value as a string (and advance just past it).  Throws if the next
@@ -1192,20 +1199,7 @@ class bt_dict_consumer : private bt_list_consumer {
     /// type.
     template <typename T>
     T consume() {
-        if constexpr (std::is_integral_v<T>)
-            return consume_integer<T>();
-        else if constexpr (detail::is_string_like<T>)
-            return T{consume_string_view<typename T::value_type>()};
-        else if constexpr (std::is_same_v<T, bt_dict>)
-            return consume_dict();
-        else if constexpr (std::is_same_v<T, bt_list>)
-            return consume_list();
-        else if constexpr (std::is_same_v<T, bt_dict_consumer>)
-            return consume_dict_consumer();
-        else {
-            static_assert(std::is_same_v<T, bt_list_consumer>, "Unsupported consume type");
-            return consume_list_consumer();
-        }
+        return detail::consume_impl<T>(*this);
     }
 
     /// Advances to a given key (as if by calling `skip_until`) and then throws if the key was not
