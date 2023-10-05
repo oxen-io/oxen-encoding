@@ -1161,8 +1161,6 @@ class bt_dict_consumer : private bt_list_consumer {
     template <typename T>
     T require(std::string_view key) {
         required(key);
-        if (!skip_until(key))
-            throw std::out_of_range{"Key " + std::string{key} + " not found!"};
         return consume<T>();
     }
 
