@@ -389,7 +389,8 @@ TEST_CASE("bt_producer with non-char values", "[bt][dict][producer][char]") {
     oxenc::bt_dict_producer d;
 
     auto val = "xyz"s;
-    std::basic_string<unsigned char> val_uc{reinterpret_cast<const unsigned char*>(val.data()), val.size()};
+    std::basic_string<unsigned char> val_uc{
+            reinterpret_cast<const unsigned char*>(val.data()), val.size()};
     std::basic_string<std::byte> val_b{reinterpret_cast<const std::byte*>(val.data()), val.size()};
 
     l.append(val);
@@ -412,6 +413,54 @@ TEST_CASE("bt_producer with non-char values", "[bt][dict][producer][char]") {
     CHECK(d.view() == d_exp);
     CHECK(d.view<unsigned char>() == to_sv<unsigned char>(d_exp));
     CHECK(d.view<std::byte>() == to_sv<std::byte>(d_exp));
+}
+
+TEST_CASE("bt_consumer with non-char values", "[bt][dict][consumer][char]") {
+    auto val = "xyz"sv;
+    std::basic_string_view<unsigned char> val_uc{
+            reinterpret_cast<const unsigned char*>(val.data()), val.size()};
+    std::basic_string_view<std::byte> val_b{
+            reinterpret_cast<const std::byte*>(val.data()), val.size()};
+
+    const oxenc::bt_list_consumer l{"l3:xyze"};
+    CHECK(oxenc::bt_list_consumer{l}.consume_string_view() == val);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string_view<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string_view<std::byte>() == val_b);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string() == val);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string<std::byte>() == val_b);
+
+    CHECK(oxenc::bt_list_consumer{std::basic_string_view<unsigned char>{
+                                          reinterpret_cast<const unsigned char*>("l3:xyze")}}
+                  .consume_string() == "xyz");
+    CHECK(oxenc::bt_list_consumer{
+                  std::basic_string_view<std::byte>{reinterpret_cast<const std::byte*>("l3:xyze")}}
+                  .consume_string() == "xyz");
+
+    const oxenc::bt_dict_consumer d{"d1:a3:xyze"};
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string_view() == val);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string_view<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string_view<std::byte>() == val_b);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string() == val);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string<std::byte>() == val_b);
+
+    CHECK(oxenc::bt_dict_consumer{d}.next_string() == std::make_pair("a"sv, val));
+    CHECK(oxenc::bt_dict_consumer{d}.next_string<unsigned char>() == std::make_pair("a"sv, val_uc));
+    CHECK(oxenc::bt_dict_consumer{d}.next_string<std::byte>() == std::make_pair("a"sv, val_b));
+
+    std::basic_string_view<unsigned char> le_uc{reinterpret_cast<const unsigned char*>("le"), 2};
+    std::basic_string_view<std::byte> le_b{reinterpret_cast<const std::byte*>("le"), 2};
+    std::basic_string_view<unsigned char> de_uc{reinterpret_cast<const unsigned char*>("de"), 2};
+    std::basic_string_view<std::byte> de_b{reinterpret_cast<const std::byte*>("de"), 2};
+    CHECK(oxenc::bt_dict_consumer{"d1:alee"}.consume_list_data<unsigned char>() == le_uc);
+    CHECK(oxenc::bt_dict_consumer{"d1:alee"}.consume_list_data<std::byte>() == le_b);
+    CHECK(oxenc::bt_dict_consumer{"d1:adee"}.consume_dict_data<unsigned char>() == de_uc);
+    CHECK(oxenc::bt_dict_consumer{"d1:adee"}.consume_dict_data<std::byte>() == de_b);
+    CHECK(oxenc::bt_list_consumer{"llee"}.consume_list_data<unsigned char>() == le_uc);
+    CHECK(oxenc::bt_list_consumer{"llee"}.consume_list_data<std::byte>() == le_b);
+    CHECK(oxenc::bt_list_consumer{"ldee"}.consume_dict_data<unsigned char>() == de_uc);
+    CHECK(oxenc::bt_list_consumer{"ldee"}.consume_dict_data<std::byte>() == de_b);
 }
 
 TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
