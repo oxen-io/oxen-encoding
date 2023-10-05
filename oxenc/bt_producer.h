@@ -51,6 +51,21 @@ char* apple_to_chars10(char* buf, IntType val) {
 }
 #endif
 
+namespace detail {
+
+    template <typename T>
+    constexpr bool is_string_view_compatible =
+            std::is_convertible_v<T, std::string_view> ||
+            std::is_convertible_v<T, std::basic_string_view<unsigned char>> ||
+            std::is_convertible_v<T, std::basic_string_view<std::byte>>;
+
+    template <typename Char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::string_view to_sv(const std::basic_string_view<Char>& x) {
+        return {reinterpret_cast<const char*>(x.data()), x.size()};
+    }
+
+}  // namespace detail
+
 /// Class that allows you to build a bt-encoded list manually, optionally without copying or
 /// allocating memory.  This is essentially the reverse of bt_list_consumer: where it lets you
 /// stream-parse a buffer, this class lets you build directly into a buffer.
@@ -148,6 +163,8 @@ class bt_list_producer {
         buffer_append({buf, static_cast<size_t>(ptr - buf)});
         buffer_append(s);
     }
+    void append_impl(std::basic_string_view<unsigned char> s) { append_impl(detail::to_sv(s)); }
+    void append_impl(std::basic_string_view<std::byte> s) { append_impl(detail::to_sv(s)); }
 
   public:
     bt_list_producer(const bt_list_producer&) = delete;
@@ -173,12 +190,18 @@ class bt_list_producer {
 
     /// Returns a string_view into the currently serialized data buffer.  Note that the returned
     /// view includes the `e` list end serialization markers which will be overwritten if the list
-    /// (or an active sublist/subdict) is appended to.
-    std::string_view view() const {
+    /// (or an active sublist/subdict) is appended to.  Can optionally return a basic_string_view of
+    /// a char-like type other than char for convenience.
+    template <typename Char = char, std::enable_if_t<sizeof(Char) == 1, int> = 0>
+    std::basic_string_view<Char> view() const {
+        const char* x;
         if (auto* s = std::get_if<std::string>(&out))
-            return std::string_view{*s}.substr(from, next - from + 1);
-        auto& b = var::get<buf_span>(out);
-        return {b.init + from, static_cast<size_t>(next - from + 1)};
+            x = s->data();
+        else
+            x = var::get<buf_span>(out).init;
+
+        return std::basic_string_view<Char>{
+                reinterpret_cast<const Char*>(x) + from, next - from + 1};
     }
 
     /// Extracts the string, when not using buffer mode.  This is only usable on the root
@@ -233,14 +256,16 @@ class bt_list_producer {
     }
 
     /// Appends an element containing binary string data
-    void append(std::string_view data) {
+    template <typename T, std::enable_if_t<detail::is_string_view_compatible<T>, int> = 0>
+    void append(const T& data) {
         if (has_child)
             throw std::logic_error{"Cannot append to list when a sublist is active"};
         append_impl(data);
         append_intermediate_ends();
     }
 
-    bt_list_producer& operator+=(std::string_view data) {
+    template <typename T, std::enable_if_t<detail::is_string_view_compatible<T>, int> = 0>
+    bt_list_producer& operator+=(const T& data) {
         append(data);
         return *this;
     }
@@ -352,10 +377,13 @@ class bt_dict_producer : bt_list_producer {
     /// be passed a non-zero value to reserve an initial size in the std::string.
     explicit bt_dict_producer(size_t reserve = 0) : bt_list_producer{'d', reserve} {}
 
-    /// Returns a string_view into the currently serialized data buffer.  Note that the returned
-    /// view includes the `e` dict end serialization markers which will be overwritten if the dict
-    /// (or an active sublist/subdict) is appended to.
-    std::string_view view() const { return bt_list_producer::view(); }
+    /// Returns a string_view (or basic_string_view<Char>) into the currently serialized data
+    /// buffer.  Note that the returned view includes the `e` dict end serialization markers which
+    /// will be overwritten if the dict (or an active sublist/subdict) is appended to.
+    template <typename Char = char>
+    std::basic_string_view<Char> view() const {
+        return bt_list_producer::view<Char>();
+    }
 
     /// Extracts the string, when not using buffer mode.  This is only usable on the root
     /// list/dict producer, and may only be used in rvalue context, as it destroys the internal
@@ -385,9 +413,8 @@ class bt_dict_producer : bt_list_producer {
     /// added, but this is only enforced (with an assertion) in debug builds.
     template <
             typename T,
-            std::enable_if_t<
-                    std::is_convertible_v<T, std::string_view> || std::is_integral_v<T>,
-                    int> = 0>
+            std::enable_if_t<detail::is_string_view_compatible<T> || std::is_integral_v<T>, int> =
+                    0>
     void append(std::string_view key, const T& value) {
         if (has_child)
             throw std::logic_error{"Cannot append to list when a sublist is active"};
@@ -415,15 +442,15 @@ class bt_dict_producer : bt_list_producer {
     /// pairs).  unordered_map, however, is not acceptable.
     template <
             typename ForwardIt,
-            std::enable_if_t<!std::is_convertible_v<ForwardIt, std::string_view>, int> = 0>
+            std::enable_if_t<!detail::is_string_view_compatible<ForwardIt>, int> = 0>
     void append(ForwardIt from, ForwardIt to) {
         if (has_child)
             throw std::logic_error{"Cannot append to list when a sublist is active"};
         using KeyType = std::remove_cv_t<std::decay_t<decltype(from->first)>>;
         using ValType = std::decay_t<decltype(from->second)>;
-        static_assert(std::is_convertible_v<decltype(from->first), std::string_view>);
+        static_assert(detail::is_string_view_compatible<decltype(from->first)>);
         static_assert(
-                std::is_convertible_v<ValType, std::string_view> || std::is_integral_v<ValType>);
+                detail::is_string_view_compatible<ValType> || std::is_integral_v<ValType>);
         using BadUnorderedMap = std::unordered_map<KeyType, ValType>;
         static_assert(
                 !(  // Disallow unordered_map iterators because they are not going to be ordered.

@@ -379,6 +379,41 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
     }
 }
 
+template <typename Char>
+std::basic_string_view<Char> to_sv(std::string_view x) {
+    return {reinterpret_cast<const Char*>(x.data()), x.size()};
+}
+
+TEST_CASE("bt_producer with non-char values", "[bt][dict][producer][char]") {
+    oxenc::bt_list_producer l;
+    oxenc::bt_dict_producer d;
+
+    auto val = "xyz"s;
+    std::basic_string<unsigned char> val_uc{reinterpret_cast<const unsigned char*>(val.data()), val.size()};
+    std::basic_string<std::byte> val_b{reinterpret_cast<const std::byte*>(val.data()), val.size()};
+
+    l.append(val);
+    l.append(val_uc);
+    l.append(val_b);
+    l += val;
+    l += val_uc;
+    l += val_b;
+
+    d.append("a", val);
+    d.append("b", val);
+    d.append("c", val);
+
+    auto l_exp = "l3:xyz3:xyz3:xyz3:xyz3:xyz3:xyze"sv;
+    CHECK(l.view() == l_exp);
+    CHECK(l.view<unsigned char>() == to_sv<unsigned char>(l_exp));
+    CHECK(l.view<std::byte>() == to_sv<std::byte>(l_exp));
+
+    auto d_exp = "d1:a3:xyz1:b3:xyz1:c3:xyze"sv;
+    CHECK(d.view() == d_exp);
+    CHECK(d.view<unsigned char>() == to_sv<unsigned char>(d_exp));
+    CHECK(d.view<std::byte>() == to_sv<std::byte>(d_exp));
+}
+
 TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
 
     bt_dict_producer x;
