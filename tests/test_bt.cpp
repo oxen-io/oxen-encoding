@@ -278,7 +278,7 @@ TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
         CHECK_THROWS_AS(lp.append(1), std::logic_error);
         CHECK(sublist.view() == "le");
         CHECK(lp.view() == "l3:abci42ei1ei17ei-999elee");
-        sublist.append(0);
+        sublist.append(false);
 
         auto sublist2{std::move(sublist)};
         sublist2 += "";
@@ -354,16 +354,16 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
     CHECK(dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42eee"sv);
     {
         auto subd = dp.append_dict("p");
-        subd.append("", "");
-        CHECK(subd.view() == "d0:0:e");
+        subd.append("", true);
+        CHECK(subd.view() == "d0:i1ee");
     }
-    CHECK(dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:ee"sv);
+    CHECK(dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:i1eee"sv);
 
     std::map<std::string, int> to_append{{"q", 1}, {"r", 2}, {"~", 3}, {"~1", 4}};
     dp.append(to_append.begin(), to_append.end());
 
     CHECK(dp.view() ==
-          "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+          "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:i1ee1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
 
     if (external_buffer) {
         CHECK_THROWS_AS(std::move(dp).str(), std::logic_error);
@@ -371,7 +371,7 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
         CHECK(orig_cap == dp.str_ref().capacity());
         auto str = std::move(dp).str();
         CHECK(str ==
-              "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+              "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:i1ee1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
         CHECK(str.capacity() == orig_cap);
 
         CHECK(dp.str_ref().capacity() < 32);  // SSO sizes vary across compilers
