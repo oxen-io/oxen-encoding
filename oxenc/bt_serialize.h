@@ -5,6 +5,7 @@
 #include <cstring>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -542,6 +543,15 @@ namespace detail {
         return os;
     }
 
+    // True if the type is a std::string, std::string_view, or some a basic_string<Char> for some
+    // single-byte type Char.
+    template <typename T>
+    constexpr bool is_string_like = false;
+    template <typename Char>
+    inline constexpr bool is_string_like<std::basic_string<Char>> = sizeof(Char) == 1;
+    template <typename Char>
+    inline constexpr bool is_string_like<std::basic_string_view<Char>> = sizeof(Char) == 1;
+
 }  // namespace detail
 
 /// Returns a wrapper around a value reference that can serialize the value directly to an output
@@ -669,6 +679,9 @@ Tuple get_tuple(const bt_value& x) {
     return get_tuple<Tuple>(var::get<bt_list>(static_cast<const bt_variant&>(x)));
 }
 
+class bt_dict_consumer;
+class bt_list_consumer;
+
 namespace detail {
     template <typename T, typename It>
     void get_tuple_impl_one(T& t, It& it) {
@@ -699,9 +712,26 @@ namespace detail {
         auto it = l.begin();
         (get_tuple_impl_one(std::get<Is>(t), it), ...);
     }
-}  // namespace detail
 
-class bt_dict_consumer;
+    template <typename T, typename Consumer>
+    T consume_impl(Consumer& c) {
+        if constexpr (std::is_integral_v<T>)
+            return c.template consume_integer<T>();
+        else if constexpr (detail::is_string_like<T>)
+            return T{c.template consume_string_view<typename T::value_type>()};
+        else if constexpr (std::is_same_v<T, bt_dict>)
+            return c.consume_dict();
+        else if constexpr (std::is_same_v<T, bt_list>)
+            return c.consume_list();
+        else if constexpr (std::is_same_v<T, bt_dict_consumer>)
+            return c.consume_dict_consumer();
+        else {
+            static_assert(std::is_same_v<T, bt_list_consumer>, "Unsupported consume type");
+            return c.consume_list_consumer();
+        }
+    }
+
+}  // namespace detail
 
 /// Class that allows you to walk through a bt-encoded list in memory without copying or allocating
 /// memory.  It accesses existing memory directly and so the caller must ensure that the referenced
@@ -719,6 +749,13 @@ class bt_list_consumer {
             throw std::runtime_error{"Cannot create a bt_list_consumer with non-list data"};
         data.remove_prefix(1);
     }
+    bt_list_consumer(std::basic_string_view<unsigned char> data_) :
+            bt_list_consumer{
+                    std::string_view{reinterpret_cast<const char*>(data_.data()), data_.size()}} {}
+    bt_list_consumer(std::basic_string_view<std::byte> data_) :
+            bt_list_consumer{
+                    std::string_view{reinterpret_cast<const char*>(data_.data()), data_.size()}} {}
+
     /// Copy constructor.  Making a copy copies the current position so can be used for multipass
     /// iteration through a list.
     bt_list_consumer(const bt_list_consumer&) = default;
@@ -744,10 +781,22 @@ class bt_list_consumer {
     /// Returns true if the next element looks like an encoded dict
     bool is_dict() const { return data.front() == 'd'; }
 
+    /// Consumes a value into the given type (string_view, string, integer, bt_dict_consumer, etc.).
+    /// This is a shortcut for calling consume_string, consume_integer, etc. based on the templated
+    /// type.
+    template <typename T>
+    T consume() {
+        return detail::consume_impl<T>(*this);
+    }
+
     /// Attempt to parse the next value as a string (and advance just past it).  Throws if the next
     /// value is not a string.
-    std::string consume_string() { return std::string{consume_string_view()}; }
-    std::string_view consume_string_view() {
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::basic_string<Char> consume_string() {
+        return std::basic_string<Char>{consume_string_view<Char>()};
+    }
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::basic_string_view<Char> consume_string_view() {
         if (data.empty())
             throw bt_deserialize_invalid{"expected a string, but reached end of data"};
         else if (!is_string())
@@ -755,7 +804,7 @@ class bt_list_consumer {
         std::string_view next{data}, result;
         detail::bt_deserialize<std::string_view>{}(next, result);
         data = next;
-        return result;
+        return {reinterpret_cast<const Char*>(result.data()), result.size()};
     };
 
     /// Attempts to parse the next value as an integer (and advance just past it).  Throws if the
@@ -830,8 +879,9 @@ class bt_list_consumer {
     /// entire thing.  This is recursive into both lists and dicts and likely to be quite
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::string_view consume_list_data() {
-        auto orig = data;
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::basic_string_view<Char> consume_list_data() {
+        std::basic_string_view<Char> orig{reinterpret_cast<const Char*>(data.data()), data.size()};
         if (data.size() < 2 || !is_list())
             throw bt_deserialize_invalid_type{"next bt value is not a list"};
         data.remove_prefix(1);  // Descend into the sublist, consume the "l"
@@ -851,8 +901,9 @@ class bt_list_consumer {
     /// entire thing.  This is recursive into both lists and dicts and likely to be quite
     /// inefficient for large, nested structures (unless the values only need to be skipped but
     /// aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::string_view consume_dict_data() {
-        auto orig = data;
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::basic_string_view<Char> consume_dict_data() {
+        std::basic_string_view<Char> orig{reinterpret_cast<const Char*>(data.data()), data.size()};
         if (data.size() < 2 || !is_dict())
             throw bt_deserialize_invalid_type{"next bt value is not a dict"};
         data.remove_prefix(1);  // Descent into the dict, consumer the "d"
@@ -916,6 +967,12 @@ class bt_dict_consumer : private bt_list_consumer {
             throw std::runtime_error{"Cannot create a bt_dict_consumer with non-dict data"};
         data.remove_prefix(1);
     }
+    bt_dict_consumer(std::basic_string_view<unsigned char> data_) :
+            bt_dict_consumer{
+                    std::string_view{reinterpret_cast<const char*>(data_.data()), data_.size()}} {}
+    bt_dict_consumer(std::basic_string_view<std::byte> data_) :
+            bt_dict_consumer{
+                    std::string_view{reinterpret_cast<const char*>(data_.data()), data_.size()}} {}
 
     /// Copy constructor.  Making a copy copies the current position so can be used for multipass
     /// iteration through a list.
@@ -952,11 +1009,12 @@ class bt_dict_consumer : private bt_list_consumer {
 
     /// Attempt to parse the next value as a string->string pair (and advance just past it).  Throws
     /// if the next value is not a string.
-    std::pair<std::string_view, std::string_view> next_string() {
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::pair<std::string_view, std::basic_string_view<Char>> next_string() {
         if (!is_string())
             throw bt_deserialize_invalid_type{"expected a string, but found "s + data.front()};
-        std::pair<std::string_view, std::string_view> ret;
-        ret.second = bt_list_consumer::consume_string_view();
+        std::pair<std::string_view, std::basic_string_view<Char>> ret;
+        ret.second = bt_list_consumer::consume_string_view<Char>();
         ret.first = flush_key();
         return ret;
     }
@@ -1017,10 +1075,11 @@ class bt_dict_consumer : private bt_list_consumer {
     /// contains the entire thing.  This is recursive into both lists and dicts and likely to be
     /// quite inefficient for large, nested structures (unless the values only need to be skipped
     /// but aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::pair<std::string_view, std::string_view> next_list_data() {
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::pair<std::string_view, std::basic_string_view<Char>> next_list_data() {
         if (data.size() < 2 || !is_list())
             throw bt_deserialize_invalid_type{"next bt dict value is not a list"};
-        return {flush_key(), bt_list_consumer::consume_list_data()};
+        return {flush_key(), bt_list_consumer::consume_list_data<Char>()};
     }
 
     /// Same as next_list_data(), but wraps the value in a bt_list_consumer for convenience
@@ -1030,10 +1089,11 @@ class bt_dict_consumer : private bt_list_consumer {
     /// contains the entire thing.  This is recursive into both lists and dicts and likely to be
     /// quite inefficient for large, nested structures (unless the values only need to be skipped
     /// but aren't separately needed).  This, however, does not require dynamic memory allocation.
-    std::pair<std::string_view, std::string_view> next_dict_data() {
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::pair<std::string_view, std::basic_string_view<Char>> next_dict_data() {
         if (data.size() < 2 || !is_dict())
             throw bt_deserialize_invalid_type{"next bt dict value is not a dict"};
-        return {flush_key(), bt_list_consumer::consume_dict_data()};
+        return {flush_key(), bt_list_consumer::consume_dict_data<Char>()};
     }
 
     /// Same as next_dict_data(), but wraps the value in a bt_dict_consumer for convenience
@@ -1060,6 +1120,23 @@ class bt_dict_consumer : private bt_list_consumer {
         return key_ == find;
     }
 
+    /// This functions nearly identicalkly to skip_until; it will return if we found an exact match
+    /// but will throw if the key is not found. If we didn't throw, the next `consumer_*()` call
+    /// will return the key-value pair we found.
+    ///
+    /// Two important notes:
+    ///
+    /// - properly encoded bt dicts must have lexicographically sorted keys, and this method assumes
+    ///   that the input is correctly sorted (and thus if we find a greater value then your key does
+    ///   not exist).
+    /// - this is irreversible; you cannot returned to skipped values without reparsing.  (You *can*
+    ///   however, make a copy of the bt_dict_consumer before calling and use the copy to return to
+    ///   the pre-skipped position).
+    void required(std::string_view find) {
+        if (!skip_until(find))
+            throw std::out_of_range{"Key " + std::string{find} + " not found!"};
+    }
+
     /// The `consume_*` functions are wrappers around next_whatever that discard the returned key.
     ///
     /// Intended for use with skip_until such as:
@@ -1069,8 +1146,14 @@ class bt_dict_consumer : private bt_list_consumer {
     ///         value = d.consume_string();
     ///
 
-    auto consume_string_view() { return next_string().second; }
-    auto consume_string() { return std::string{consume_string_view()}; }
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    auto consume_string_view() {
+        return next_string<Char>().second;
+    }
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    auto consume_string() {
+        return std::basic_string<Char>{consume_string_view<Char>()};
+    }
 
     template <typename IntType>
     auto consume_integer() {
@@ -1097,13 +1180,46 @@ class bt_dict_consumer : private bt_list_consumer {
         next_dict(dict);
     }
 
-    std::string_view consume_list_data() { return next_list_data().second; }
-    std::string_view consume_dict_data() { return next_dict_data().second; }
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::basic_string_view<Char> consume_list_data() {
+        return next_list_data<Char>().second;
+    }
+    template <typename Char = char, typename = std::enable_if_t<sizeof(Char) == 1>>
+    std::basic_string_view<Char> consume_dict_data() {
+        return next_dict_data<Char>().second;
+    }
 
     /// Shortcut for wrapping `consume_list_data()` in a new list consumer
     bt_list_consumer consume_list_consumer() { return consume_list_data(); }
     /// Shortcut for wrapping `consume_dict_data()` in a new dict consumer
     bt_dict_consumer consume_dict_consumer() { return consume_dict_data(); }
+
+    /// Consumes a value into the given type (string_view, string, integer, bt_dict_consumer, etc.).
+    /// This is a shortcut for calling consume_string, consume_integer, etc. based on the templated
+    /// type.
+    template <typename T>
+    T consume() {
+        return detail::consume_impl<T>(*this);
+    }
+
+    /// Advances to a given key (as if by calling `skip_until`) and then throws if the key was not
+    /// found; otherwise returns the value parsed into the given type.
+    template <typename T>
+    T require(std::string_view key) {
+        required(key);
+        return consume<T>();
+    }
+
+    /// Advances to a given key (as if by calling `skip_until`) and then returns std::nullopt if the
+    /// key was not found; otherwise returns the value parsed into the given type.  Note that this
+    /// will still throw if the key exists but has an incompatible value (e.g. calling
+    /// `d.maybe<int>("x")` when the value at "x" is a string).
+    template <typename T>
+    std::optional<T> maybe(std::string_view key) {
+        if (!skip_until(key))
+            return std::nullopt;
+        return consume<T>();
+    }
 };
 
 inline bt_dict_consumer bt_list_consumer::consume_dict_consumer() {

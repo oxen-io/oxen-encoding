@@ -15,7 +15,7 @@
 
 #ifdef __APPLE__
 #include <AvailabilityMacros.h>
-#if defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED < 101400)
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 101400
 #define BROKEN_APPLE_VARIANT
 #endif
 #endif

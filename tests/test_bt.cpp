@@ -278,7 +278,7 @@ TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
         CHECK_THROWS_AS(lp.append(1), std::logic_error);
         CHECK(sublist.view() == "le");
         CHECK(lp.view() == "l3:abci42ei1ei17ei-999elee");
-        sublist.append(0);
+        sublist.append(false);
 
         auto sublist2{std::move(sublist)};
         sublist2 += "";
@@ -321,7 +321,7 @@ TEST_CASE("bt streaming list producer", "[bt][list][producer]") {
               "l3:abci42ei1ei17ei-999eli0e0:elll3:omgeeed3:foo3:bar1:gi42e1:hld1:ad1:"
               "Ali999eeeeeee");
 
-        CHECK(lp.str_ref().capacity() < 32); // SSO sizes vary across compilers
+        CHECK(lp.str_ref().capacity() < 32);  // SSO sizes vary across compilers
         CHECK(lp.view() == "le");
     }
 }
@@ -354,16 +354,16 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
     CHECK(dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42eee"sv);
     {
         auto subd = dp.append_dict("p");
-        subd.append("", "");
-        CHECK(subd.view() == "d0:0:e");
+        subd.append("", true);
+        CHECK(subd.view() == "d0:i1ee");
     }
-    CHECK(dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:ee"sv);
+    CHECK(dp.view() == "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:i1eee"sv);
 
     std::map<std::string, int> to_append{{"q", 1}, {"r", 2}, {"~", 3}, {"~1", 4}};
     dp.append(to_append.begin(), to_append.end());
 
     CHECK(dp.view() ==
-          "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+          "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:i1ee1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
 
     if (external_buffer) {
         CHECK_THROWS_AS(std::move(dp).str(), std::logic_error);
@@ -371,12 +371,96 @@ TEST_CASE("bt streaming dict producer", "[bt][dict][producer]") {
         CHECK(orig_cap == dp.str_ref().capacity());
         auto str = std::move(dp).str();
         CHECK(str ==
-              "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:0:e1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
+              "d3:foo3:bar4:foo\0i-333222111e6:myListl0:i2ei42ee1:pd0:i1ee1:qi1e1:ri2e1:~i3e2:~1i4ee"sv);
         CHECK(str.capacity() == orig_cap);
 
-        CHECK(dp.str_ref().capacity() < 32); // SSO sizes vary across compilers
+        CHECK(dp.str_ref().capacity() < 32);  // SSO sizes vary across compilers
         CHECK(dp.view() == "de");
     }
+}
+
+template <typename Char>
+std::basic_string_view<Char> to_sv(std::string_view x) {
+    return {reinterpret_cast<const Char*>(x.data()), x.size()};
+}
+
+TEST_CASE("bt_producer with non-char values", "[bt][dict][producer][char]") {
+    oxenc::bt_list_producer l;
+    oxenc::bt_dict_producer d;
+
+    auto val = "xyz"s;
+    std::basic_string<unsigned char> val_uc{
+            reinterpret_cast<const unsigned char*>(val.data()), val.size()};
+    std::basic_string<std::byte> val_b{reinterpret_cast<const std::byte*>(val.data()), val.size()};
+
+    l.append(val);
+    l.append(val_uc);
+    l.append(val_b);
+    l += val;
+    l += val_uc;
+    l += val_b;
+
+    d.append("a", val);
+    d.append("b", val);
+    d.append("c", val);
+
+    auto l_exp = "l3:xyz3:xyz3:xyz3:xyz3:xyz3:xyze"sv;
+    CHECK(l.view() == l_exp);
+    CHECK(l.view<unsigned char>() == to_sv<unsigned char>(l_exp));
+    CHECK(l.view<std::byte>() == to_sv<std::byte>(l_exp));
+
+    auto d_exp = "d1:a3:xyz1:b3:xyz1:c3:xyze"sv;
+    CHECK(d.view() == d_exp);
+    CHECK(d.view<unsigned char>() == to_sv<unsigned char>(d_exp));
+    CHECK(d.view<std::byte>() == to_sv<std::byte>(d_exp));
+}
+
+TEST_CASE("bt_consumer with non-char values", "[bt][dict][consumer][char]") {
+    auto val = "xyz"sv;
+    std::basic_string_view<unsigned char> val_uc{
+            reinterpret_cast<const unsigned char*>(val.data()), val.size()};
+    std::basic_string_view<std::byte> val_b{
+            reinterpret_cast<const std::byte*>(val.data()), val.size()};
+
+    const oxenc::bt_list_consumer l{"l3:xyze"};
+    CHECK(oxenc::bt_list_consumer{l}.consume_string_view() == val);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string_view<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string_view<std::byte>() == val_b);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string() == val);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_list_consumer{l}.consume_string<std::byte>() == val_b);
+
+    CHECK(oxenc::bt_list_consumer{std::basic_string_view<unsigned char>{
+                                          reinterpret_cast<const unsigned char*>("l3:xyze")}}
+                  .consume_string() == "xyz");
+    CHECK(oxenc::bt_list_consumer{
+                  std::basic_string_view<std::byte>{reinterpret_cast<const std::byte*>("l3:xyze")}}
+                  .consume_string() == "xyz");
+
+    const oxenc::bt_dict_consumer d{"d1:a3:xyze"};
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string_view() == val);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string_view<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string_view<std::byte>() == val_b);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string() == val);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string<unsigned char>() == val_uc);
+    CHECK(oxenc::bt_dict_consumer{d}.consume_string<std::byte>() == val_b);
+
+    CHECK(oxenc::bt_dict_consumer{d}.next_string() == std::make_pair("a"sv, val));
+    CHECK(oxenc::bt_dict_consumer{d}.next_string<unsigned char>() == std::make_pair("a"sv, val_uc));
+    CHECK(oxenc::bt_dict_consumer{d}.next_string<std::byte>() == std::make_pair("a"sv, val_b));
+
+    std::basic_string_view<unsigned char> le_uc{reinterpret_cast<const unsigned char*>("le"), 2};
+    std::basic_string_view<std::byte> le_b{reinterpret_cast<const std::byte*>("le"), 2};
+    std::basic_string_view<unsigned char> de_uc{reinterpret_cast<const unsigned char*>("de"), 2};
+    std::basic_string_view<std::byte> de_b{reinterpret_cast<const std::byte*>("de"), 2};
+    CHECK(oxenc::bt_dict_consumer{"d1:alee"}.consume_list_data<unsigned char>() == le_uc);
+    CHECK(oxenc::bt_dict_consumer{"d1:alee"}.consume_list_data<std::byte>() == le_b);
+    CHECK(oxenc::bt_dict_consumer{"d1:adee"}.consume_dict_data<unsigned char>() == de_uc);
+    CHECK(oxenc::bt_dict_consumer{"d1:adee"}.consume_dict_data<std::byte>() == de_b);
+    CHECK(oxenc::bt_list_consumer{"llee"}.consume_list_data<unsigned char>() == le_uc);
+    CHECK(oxenc::bt_list_consumer{"llee"}.consume_list_data<std::byte>() == le_b);
+    CHECK(oxenc::bt_list_consumer{"ldee"}.consume_dict_data<unsigned char>() == de_uc);
+    CHECK(oxenc::bt_list_consumer{"ldee"}.consume_dict_data<std::byte>() == de_b);
 }
 
 TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
@@ -401,6 +485,52 @@ TEST_CASE("bt_producer/bt_value combo", "[bt][dict][value][producer]") {
     y.append("~");
 
     CHECK(y.view() == "li123ed1:bi1e1:cd1:d1:e1:fli1ei2ei3eeeed1:a0:eld1:a0:ee1:~e");
+}
+
+TEST_CASE("Require integer/string methods", "[bt][dict][consumer][require]") {
+    auto data = bt_serialize(
+            bt_dict{{"A", 92},
+                    {"C", 64},
+                    {"E", "apple pie"},
+                    {"G", "tomato sauce"},
+                    {"I", 69},
+                    {"K", 420},
+                    {"M", bt_dict{{"Q", "Q"}}}});
+
+    bt_dict_consumer btdp{data};
+
+    int a, c, i, k;
+    std::string e, g;
+    bt_dict bd;
+
+    SECTION("Failure case: key does not exist") {
+        REQUIRE_THROWS(c = btdp.require<int>("B"));
+        REQUIRE_THROWS(btdp.required("B"));
+        REQUIRE(btdp.maybe<std::string>("B") == std::nullopt);
+    }
+
+    SECTION("Failure case: key is not a string") {
+        REQUIRE_THROWS(e = btdp.require<std::string>("C"));
+    }
+
+    SECTION("Failure case: key is not an int") {
+        REQUIRE_THROWS(c = btdp.require<int>("E"));
+    }
+
+    SECTION("Success cases - direct assignment") {
+        REQUIRE_NOTHROW(a = btdp.require<int>("A"));
+        REQUIRE_NOTHROW(c = btdp.require<int>("C"));
+        REQUIRE_NOTHROW(e = btdp.require<std::string>("E"));
+        REQUIRE_NOTHROW(g = btdp.require<std::string>("G"));
+        REQUIRE_NOTHROW(i = btdp.require<int>("I"));
+        REQUIRE_NOTHROW(k = btdp.require<int>("K"));
+        REQUIRE_NOTHROW(bd = btdp.consume<bt_dict>());
+    }
+
+    SECTION("Success cases - string conversion types") {
+        std::basic_string<uint8_t> ustr;
+        REQUIRE_NOTHROW(ustr = btdp.require<std::basic_string<uint8_t>>("E"));
+    }
 }
 
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
