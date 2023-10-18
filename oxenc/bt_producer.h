@@ -148,11 +148,15 @@ class bt_list_producer {
     // append_intermediate_ends().
     template <typename IntType, std::enable_if_t<std::is_integral_v<IntType>, int> = 0>
     void append_impl(IntType val) {
-        char buf[22];  // 'i' + base10 representation + 'e'
-        buf[0] = 'i';
-        auto* ptr = write_integer(val, buf + 1);
-        *ptr++ = 'e';
-        buffer_append({buf, static_cast<size_t>(ptr - buf)});
+        if constexpr (std::is_same_v<IntType, bool>)
+            buffer_append(val ? "i1e"sv : "i0e"sv);
+        else {
+            char buf[22];  // 'i' + base10 representation + 'e'
+            buf[0] = 'i';
+            auto* ptr = write_integer(val, buf + 1);
+            *ptr++ = 'e';
+            buffer_append({buf, static_cast<size_t>(ptr - buf)});
+        }
     }
 
     // Appends a string value, but does not call append_intermediate_ends()
@@ -270,7 +274,7 @@ class bt_list_producer {
         return *this;
     }
 
-    /// Appends an integer
+    /// Appends an integer (including bools)
     template <typename IntType, std::enable_if_t<std::is_integral_v<IntType>, int> = 0>
     void append(IntType i) {
         if (has_child)
