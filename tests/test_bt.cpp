@@ -533,6 +533,49 @@ TEST_CASE("Require integer/string methods", "[bt][dict][consumer][require]") {
     }
 }
 
+TEST_CASE("bt append_signature", "[bt][signature]") {
+    bt_dict_producer d;
+    bt_list_producer l;
+
+    d.append("a", 1);
+    d.append("b", "2");
+    l.append("c");
+    l.append("d");
+
+    d.append_signature("~1", [](std::string_view to_sign) {
+        CHECK(to_sign == "d1:ai1e1:b1:2");
+        return "sig1"s;
+    });
+    d.append_signature("~2", [](std::basic_string_view<std::byte> to_sign) {
+        CHECK(to_sign == to_sv<std::byte>("d1:ai1e1:b1:22:~14:sig1"));
+        return "sig2"sv;
+    });
+    d.append_signature("~3", [](const std::basic_string_view<unsigned char>& to_sign) {
+        CHECK(to_sign == to_sv<unsigned char>("d1:ai1e1:b1:22:~14:sig12:~24:sig2"));
+        std::array<unsigned char, 4> sig{{0x73, 0x69, 0x67, 0x33}};
+        return sig;
+    });
+    CHECK(d.view_for_signing() == "d1:ai1e1:b1:22:~14:sig12:~24:sig22:~34:sig3");
+    CHECK(d.view() == "d1:ai1e1:b1:22:~14:sig12:~24:sig22:~34:sig3e");
+
+    l.append_signature([](const std::string_view to_sign) {
+        CHECK(to_sign == "l1:c1:d");
+        return "sig";
+    });
+    l.append_signature([](const std::string_view& to_sign) {
+        CHECK(to_sign == "l1:c1:d3:sig");
+        return to_sv<std::byte>("sig2"sv);
+    });
+    l.append_signature([](std::string_view to_sign) {
+        CHECK(to_sign == "l1:c1:d3:sig4:sig2");
+        auto s = to_sv<unsigned char>("sig3"sv);
+        return std::basic_string<unsigned char>{s};
+    });
+
+    CHECK(l.view_for_signing<std::byte>() == to_sv<std::byte>("l1:c1:d3:sig4:sig24:sig3"sv));
+    CHECK(l.view() == "l1:c1:d3:sig4:sig24:sig3e");
+}
+
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
 TEST_CASE("apple to_chars workaround test", "[bt][apple][sucks]") {
     char buf[20];

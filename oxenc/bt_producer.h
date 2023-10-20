@@ -64,6 +64,35 @@ namespace detail {
         return {reinterpret_cast<const char*>(x.data()), x.size()};
     }
 
+    template <typename Class, typename SignFunc>
+    auto append_signature_helper(Class& self, SignFunc sign) {
+        using Char = std::conditional_t<
+                std::is_invocable_v<SignFunc, std::string_view&&>,
+                char,
+                std::conditional_t<
+                        std::is_invocable_v<SignFunc, std::basic_string_view<unsigned char>&&>,
+                        unsigned char,
+                        std::conditional_t<
+                                std::is_invocable_v<SignFunc, std::basic_string_view<std::byte>&&>,
+                                std::byte,
+                                void>>>;
+        static_assert(
+                !std::is_void_v<Char>,
+                "append_signature signing function must take a string_view (or unsigned "
+                "char/std::byte variants)");
+
+        auto result = sign(self.template view_for_signing<Char>());
+        if constexpr (
+                std::is_same_v<decltype(result), char*> ||
+                std::is_same_v<decltype(result), const char*>)
+            return std::string_view{result};
+        else {
+            static_assert(
+                    sizeof(*result.data()) == 1,
+                    "append_signature signing function must return a container of bytes/chars");
+            return result;
+        }
+    }
 }  // namespace detail
 
 /// Class that allows you to build a bt-encoded list manually, optionally without copying or
@@ -249,6 +278,19 @@ class bt_list_producer {
             s->reserve(new_cap);
     }
 
+    /// Returns a view of the current serialized list values suitable for signing.  The returned
+    /// value is the currently serialized list data up to but not including the terminating `e`
+    /// (since that `e` will be overwritten if another item, i.e. a signature, is appended), and
+    /// thus includes all values added to the list so far.  Typically this doesn't need to be used
+    /// directly but rather can use `append_signature` to generate an append a signature over a
+    /// list's prior elements.
+    template <typename Char = char>
+    std::basic_string_view<Char> view_for_signing() const {
+        auto v = view<Char>();
+        v.remove_suffix(1);
+        return v;
+    }
+
     /// Returns the end position in the buffer.  (This is primarily useful for external buffer
     /// mode, but still works in string mode).
     const char* end() const {
@@ -337,6 +379,21 @@ class bt_list_producer {
     /// bt_value_producer.h header (either directly or via bt.h) to use this method.
     template <typename T>
     void append_bt(const T& bt);
+
+    /// Appends a signature of the previous list values to the list, calling the given invocable
+    /// object to obtain the signature.
+    ///
+    /// The signing callable will be invoked with a std::basic_string_view<C> of the value to be
+    /// signed, with C allowed to be any of `char`, `unsigned char`, or `std::byte`.
+    ///
+    /// The signing callable must return either a C string literal or a container of single-byte
+    /// elements with contiguous storage with `data()` and `size()` members; e.g. `std::string`,
+    /// `std::basic_string_view<std::byte>`, `std::array<unsigned char, 32>` and so on.
+    template <typename SignFunc>
+    void append_signature(SignFunc&& sign) {
+        auto result = detail::append_signature_helper(*this, std::forward<SignFunc>(sign));
+        append(std::string_view{reinterpret_cast<const char*>(result.data()), result.size()});
+    }
 };
 
 /// Class that allows you to build a bt-encoded dict manually, without copying or allocating memory.
@@ -410,6 +467,17 @@ class bt_dict_producer : bt_list_producer {
     /// Calls `.reserve()` on the underlying std::string, if using string-builder mode.
     void reserve(size_t new_cap) { bt_list_producer::reserve(new_cap); }
 
+    /// Returns a view of the current serialized dict keys/values suitable for signing.  The
+    /// returned value is the currently serialized dict data up to but not including the terminating
+    /// `e` (since that `e` will be overwritten if another key is appended), and thus includes all
+    /// keys and values added to the dict so far.  Typically this doesn't need to be used directly
+    /// but rather can use `append_signature` to generate an append a signature over a dict's prior
+    /// fields.
+    template <typename Char = char>
+    std::basic_string_view<Char> view_for_signing() const {
+        return bt_list_producer::view_for_signing<Char>();
+    }
+
     /// Returns the end position in the buffer.
     const char* end() const { return bt_list_producer::end(); }
 
@@ -453,8 +521,7 @@ class bt_dict_producer : bt_list_producer {
         using KeyType = std::remove_cv_t<std::decay_t<decltype(from->first)>>;
         using ValType = std::decay_t<decltype(from->second)>;
         static_assert(detail::is_string_view_compatible<decltype(from->first)>);
-        static_assert(
-                detail::is_string_view_compatible<ValType> || std::is_integral_v<ValType>);
+        static_assert(detail::is_string_view_compatible<ValType> || std::is_integral_v<ValType>);
         using BadUnorderedMap = std::unordered_map<KeyType, ValType>;
         static_assert(
                 !(  // Disallow unordered_map iterators because they are not going to be ordered.
@@ -516,6 +583,25 @@ class bt_dict_producer : bt_list_producer {
     /// bt_value_producer.h header (either directly or via bt.h) to use this method.
     template <typename T>
     void append_bt(std::string_view key, const T& bt);
+
+    /// Appends a signature of the previous dict keys/values to the list, calling the given
+    /// invocable object to obtain the signature.
+    ///
+    /// The signing callable will be invoked with a std::basic_string_view<C> of the value to be
+    /// signed, with C allowed to be any of `char`, `unsigned char`, or `std::byte`.
+    ///
+    /// The signing callable must return either a C string literal or a container of single-byte
+    /// elements with contiguous storage with `data()` and `size()` members; e.g. `std::string`,
+    /// `std::basic_string_view<std::byte>`, `std::array<unsigned char, 32>` and so on.
+    ///
+    /// Since the signature signs all previous values, it is typically recommended that the
+    /// signature use a late-sorting key; "~" (which is 0x7e, and the last printable 7-bit ascii
+    /// value) is suggested.
+    template <typename SignFunc>
+    void append_signature(std::string_view key, SignFunc&& sign) {
+        auto result = detail::append_signature_helper(*this, std::forward<SignFunc>(sign));
+        append(key, std::string_view{reinterpret_cast<const char*>(result.data()), result.size()});
+    }
 };
 
 inline bt_list_producer::bt_list_producer(bt_list_producer* parent, char prefix) :
