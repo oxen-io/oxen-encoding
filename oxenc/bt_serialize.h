@@ -805,7 +805,7 @@ class bt_list_consumer {
         detail::bt_deserialize<std::string_view>{}(next, result);
         data = next;
         return {reinterpret_cast<const Char*>(result.data()), result.size()};
-    };
+    }
 
     /// Attempts to parse the next value as an integer (and advance just past it).  Throws if the
     /// next value is not an integer.
@@ -861,20 +861,6 @@ class bt_list_consumer {
         data = n;
     }
 
-    /// Consumes a value without returning it.
-    void skip_value() {
-        if (is_string())
-            consume_string_view();
-        else if (is_integer())
-            detail::bt_deserialize_integer(data);
-        else if (is_list())
-            consume_list_data();
-        else if (is_dict())
-            consume_dict_data();
-        else
-            throw bt_deserialize_invalid_type{"next bt value has unknown type"};
-    }
-
     /// Attempts to parse the next value as a list and returns the string_view that contains the
     /// entire thing.  This is recursive into both lists and dicts and likely to be quite
     /// inefficient for large, nested structures (unless the values only need to be skipped but
@@ -925,6 +911,20 @@ class bt_list_consumer {
     bt_list_consumer consume_list_consumer() { return consume_list_data(); }
     /// Shortcut for wrapping `consume_dict_data()` in a new dict consumer
     inline bt_dict_consumer consume_dict_consumer();
+
+    /// Consumes a value without returning it.
+    void skip_value() {
+        if (is_string())
+            consume_string_view();
+        else if (is_integer())
+            detail::bt_deserialize_integer(data);
+        else if (is_list())
+            consume_list_data();
+        else if (is_dict())
+            consume_dict_data();
+        else
+            throw bt_deserialize_invalid_type{"next bt value has unknown type"};
+    }
 };
 
 /// Class that allows you to walk through key-value pairs of a bt-encoded dict in memory without
