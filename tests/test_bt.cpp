@@ -542,15 +542,18 @@ TEST_CASE("bt append_signature", "[bt][signature]") {
     l.append("c");
     l.append("d");
 
+    using ustring_view = std::basic_string_view<unsigned char>;
+    using bstring_view = std::basic_string_view<std::byte>;
+
     d.append_signature("~1", [](std::string_view to_sign) {
         CHECK(to_sign == "d1:ai1e1:b1:2");
         return "sig1"s;
     });
-    d.append_signature("~2", [](std::basic_string_view<std::byte> to_sign) {
+    d.append_signature("~2", [](bstring_view to_sign) {
         CHECK(to_sign == to_sv<std::byte>("d1:ai1e1:b1:22:~14:sig1"));
         return "sig2"sv;
     });
-    d.append_signature("~3", [](const std::basic_string_view<unsigned char>& to_sign) {
+    d.append_signature("~3", [](const ustring_view& to_sign) {
         CHECK(to_sign == to_sv<unsigned char>("d1:ai1e1:b1:22:~14:sig12:~24:sig2"));
         std::array<unsigned char, 4> sig{{0x73, 0x69, 0x67, 0x33}};
         return sig;
@@ -568,12 +571,78 @@ TEST_CASE("bt append_signature", "[bt][signature]") {
     });
     l.append_signature([](std::string_view to_sign) {
         CHECK(to_sign == "l1:c1:d3:sig4:sig2");
-        auto s = to_sv<unsigned char>("sig3"sv);
-        return std::basic_string<unsigned char>{s};
+        return to_sv<unsigned char>("sig3"sv);
     });
 
     CHECK(l.view_for_signing<std::byte>() == to_sv<std::byte>("l1:c1:d3:sig4:sig24:sig3"sv));
     CHECK(l.view() == "l1:c1:d3:sig4:sig24:sig3e");
+
+    bt_dict_consumer dc{d.view()};
+    CHECK(dc.next_integer<int>() == std::make_pair("a"sv, 1));
+    CHECK(dc.next_string() == std::make_pair("b"sv, "2"sv));
+    auto [key, msg, sig] = dc.next_signature();
+    CHECK(key == "~1");
+    CHECK(msg == "d1:ai1e1:b1:2");
+    CHECK(sig == "sig1");
+    CHECK(dc.skip_until("~2"sv));
+    REQUIRE_NOTHROW(dc.consume_signature([](bstring_view msg, bstring_view sig) {
+        if (msg != to_sv<std::byte>("d1:ai1e1:b1:22:~14:sig1"))
+            throw std::runtime_error{"bad msg"};
+        if (sig != to_sv<std::byte>("sig2"))
+            throw std::runtime_error{"bad sig"};
+    }));
+
+    CHECK_THROWS(dc.consume_signature([](bstring_view msg, bstring_view sig) {
+        CHECK(msg == to_sv<std::byte>("d1:ai1e1:b1:22:~14:sig12:~24:sig2"));
+        CHECK(sig == to_sv<std::byte>("sig3"));
+        throw std::runtime_error{"test throw"};
+    }));
+
+    dc = {d.view()};
+    dc.require_signature("~3", [](std::string_view msg, std::string_view sig) {
+        CHECK(msg == "d1:ai1e1:b1:22:~14:sig12:~24:sig2");
+        CHECK(sig == "sig3");
+    });
+
+    bt_list_consumer lc{l.view()};
+    lc.skip_value();
+    lc.skip_value();
+    lc.consume_signature([](std::string_view msg, std::string_view sig) {
+        CHECK(msg == "l1:c1:d");
+        CHECK(sig == "sig");
+    });
+    lc.consume_signature([](bstring_view msg, bstring_view sig) {
+        CHECK(msg == to_sv<std::byte>("l1:c1:d3:sig"));
+        CHECK(sig == to_sv<std::byte>("sig2"));
+    });
+    lc.consume_signature([](ustring_view msg, ustring_view sig) {
+        CHECK(msg == to_sv<unsigned char>("l1:c1:d3:sig4:sig2"));
+        CHECK(sig == to_sv<unsigned char>("sig3"));
+    });
+
+    // Should not compile:
+#if 0
+    dc = {d.view()};
+    dc.require_signature("~2", [](std::string_view msg, std::string_view sig) {
+        return true; });
+#endif
+
+    // Test with long keys for the sig field (figuring out the exact signing value is a little
+    // complicated because of the integer in the key value; this is for testing that logic).
+    for (size_t len : {9, 10, 11, 99, 100, 101, 999, 1000, 9999, 10000}) {
+        SECTION("sig key length " + std::to_string(len)) {
+            bt_dict_producer dp2;
+            dp2.append("a", 1);
+            std::string sig_key(len, 'x');
+            dp2.append_signature(sig_key, [](std::string_view to_sign) { return "sig"; });
+            bt_dict_consumer dc2{dp2.view()};
+            CHECK(dc2.next_integer<int>() == std::make_pair("a"sv, 1));
+            auto [key, msg, sig] = dc2.next_signature();
+            CHECK(key == sig_key);
+            CHECK(msg == "d1:ai1e");
+            CHECK(sig == "sig");
+        }
+    }
 }
 
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
