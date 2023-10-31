@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <charconv>
+#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -10,6 +11,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "bt_serialize.h"
 #include "variant.h"
 
 namespace oxenc {
@@ -86,6 +88,14 @@ namespace detail {
                 std::is_same_v<decltype(result), char*> ||
                 std::is_same_v<decltype(result), const char*>)
             return std::string_view{result};
+        else if constexpr (
+                std::is_same_v<decltype(result), unsigned char*> ||
+                std::is_same_v<decltype(result), const unsigned char*>)
+            return std::basic_string_view<unsigned char>{result};
+        else if constexpr (
+                std::is_same_v<decltype(result), std::byte*> ||
+                std::is_same_v<decltype(result), const std::byte*>)
+            return std::basic_string_view<std::byte>{result};
         else {
             static_assert(
                     sizeof(*result.data()) == 1,
@@ -390,9 +400,12 @@ class bt_list_producer {
     /// elements with contiguous storage with `data()` and `size()` members; e.g. `std::string`,
     /// `std::basic_string_view<std::byte>`, `std::array<unsigned char, 32>` and so on.
     template <typename SignFunc>
-    void append_signature(SignFunc&& sign) {
+    bool append_signature(SignFunc&& sign) {
         auto result = detail::append_signature_helper(*this, std::forward<SignFunc>(sign));
+        if (not result.data())
+            return false;
         append(std::string_view{reinterpret_cast<const char*>(result.data()), result.size()});
+        return true;
     }
 };
 
@@ -598,9 +611,12 @@ class bt_dict_producer : bt_list_producer {
     /// signature use a late-sorting key; "~" (which is 0x7e, and the last printable 7-bit ascii
     /// value) is suggested.
     template <typename SignFunc>
-    void append_signature(std::string_view key, SignFunc&& sign) {
+    bool append_signature(std::string_view key, SignFunc&& sign) {
         auto result = detail::append_signature_helper(*this, std::forward<SignFunc>(sign));
+        if (not result.data())
+            return false;
         append(key, std::string_view{reinterpret_cast<const char*>(result.data()), result.size()});
+        return true;
     }
 };
 

@@ -545,34 +545,34 @@ TEST_CASE("bt append_signature", "[bt][signature]") {
     using ustring_view = std::basic_string_view<unsigned char>;
     using bstring_view = std::basic_string_view<std::byte>;
 
-    d.append_signature("~1", [](std::string_view to_sign) {
+    CHECK(d.append_signature("~1", [](std::string_view to_sign) {
         CHECK(to_sign == "d1:ai1e1:b1:2");
         return "sig1"s;
-    });
-    d.append_signature("~2", [](bstring_view to_sign) {
+    }));
+    CHECK(d.append_signature("~2", [](bstring_view to_sign) {
         CHECK(to_sign == to_sv<std::byte>("d1:ai1e1:b1:22:~14:sig1"));
         return "sig2"sv;
-    });
-    d.append_signature("~3", [](const ustring_view& to_sign) {
+    }));
+    CHECK(d.append_signature("~3", [](const ustring_view& to_sign) {
         CHECK(to_sign == to_sv<unsigned char>("d1:ai1e1:b1:22:~14:sig12:~24:sig2"));
         std::array<unsigned char, 4> sig{{0x73, 0x69, 0x67, 0x33}};
         return sig;
-    });
+    }));
     CHECK(d.view_for_signing() == "d1:ai1e1:b1:22:~14:sig12:~24:sig22:~34:sig3");
     CHECK(d.view() == "d1:ai1e1:b1:22:~14:sig12:~24:sig22:~34:sig3e");
 
-    l.append_signature([](const std::string_view to_sign) {
+    CHECK(l.append_signature([](const std::string_view to_sign) {
         CHECK(to_sign == "l1:c1:d");
         return "sig";
-    });
-    l.append_signature([](const std::string_view& to_sign) {
+    }));
+    CHECK(l.append_signature([](const std::string_view& to_sign) {
         CHECK(to_sign == "l1:c1:d3:sig");
         return to_sv<std::byte>("sig2"sv);
-    });
-    l.append_signature([](std::string_view to_sign) {
+    }));
+    CHECK(l.append_signature([](std::string_view to_sign) {
         CHECK(to_sign == "l1:c1:d3:sig4:sig2");
         return to_sv<unsigned char>("sig3"sv);
-    });
+    }));
 
     CHECK(l.view_for_signing<std::byte>() == to_sv<std::byte>("l1:c1:d3:sig4:sig24:sig3"sv));
     CHECK(l.view() == "l1:c1:d3:sig4:sig24:sig3e");
