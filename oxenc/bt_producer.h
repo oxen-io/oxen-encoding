@@ -10,6 +10,10 @@
 #include <unordered_map>
 #include <utility>
 
+#ifndef NDEBUG
+#include "bt_serialize.h"
+#endif
+
 #include "variant.h"
 
 namespace oxenc {
@@ -394,6 +398,26 @@ class bt_list_producer {
         auto result = detail::append_signature_helper(*this, std::forward<SignFunc>(sign));
         append(std::string_view{reinterpret_cast<const char*>(result.data()), result.size()});
     }
+
+    /// Appends an already bt-encoded string as-is to the list.  This is useful for signed
+    /// encoded data which you may not know how to perfectly re-encode after decoding, i.e.
+    /// a bt-dict where you only know about a subset of the keys.  In theory, one could iterate
+    /// every key and decode the dict recursively, keeping every value without knowing what it
+    /// is, and then reconstitute the original dict using the result of this.  That would be
+    /// messy, tedious, and kinda a waste of time.
+    ///
+    /// Caveat emptor: this can *absolutely* be a foot-shotgun.  The rest of this class is
+    /// designed such that if it *does* give you an output bt-encoded string, it *will* be
+    /// valid bt-encoding.  This method violates that property.
+    template <typename T, std::enable_if_t<detail::is_string_view_compatible<T>, int> = 0>
+    void append_encoded(T encoded) {
+#ifndef NDEBUG
+        // on debug build, throw if `encoded` is invalid bt-encoded data
+        (void)bt_deserialize<bt_value>(encoded);
+#endif
+        buffer_append(encoded);
+        append_intermediate_ends();
+    }
 };
 
 /// Class that allows you to build a bt-encoded dict manually, without copying or allocating memory.
@@ -601,6 +625,23 @@ class bt_dict_producer : bt_list_producer {
     void append_signature(std::string_view key, SignFunc&& sign) {
         auto result = detail::append_signature_helper(*this, std::forward<SignFunc>(sign));
         append(key, std::string_view{reinterpret_cast<const char*>(result.data()), result.size()});
+    }
+
+    /// Appends an already bt-encoded string as-is to the dict.  This is useful for signed
+    /// encoded data which you may not know how to perfectly re-encode after decoding, i.e.
+    /// a bt-dict where you only know about a subset of the keys.  In theory, one could iterate
+    /// every key and decode the dict recursively, keeping every value without knowing what it
+    /// is, and then reconstitute the original dict using the result of this.  That would be
+    /// messy, tedious, and kinda a waste of time.
+    ///
+    /// Caveat emptor: this can *absolutely* be a foot-shotgun.  The rest of this class is
+    /// designed such that if it *does* give you an output bt-encoded string, it *will* be
+    /// valid bt-encoding.  This method violates that property.
+    template <typename T, std::enable_if_t<detail::is_string_view_compatible<T>, int> = 0>
+    void append_encoded(std::string_view key, T encoded) {
+        check_incrementing_key(key);
+        append_impl(key);
+        bt_list_producer::append_encoded(encoded);
     }
 };
 
