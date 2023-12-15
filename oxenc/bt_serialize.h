@@ -598,9 +598,15 @@ std::string bt_serialize(const T& val) {
 ///     int value;
 ///     bt_deserialize(encoded, value); // Sets value to 42
 ///
+/// Note that this method can set a value even if in fails, in particular when the value was parsed
+/// successfully but the parsed string still has remaining content.
+///
 template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
 void bt_deserialize(std::string_view s, T& val) {
-    return detail::bt_deserialize<T>{}(s, val);
+    detail::bt_deserialize<T>{}(s, val);
+    if (!s.empty())
+        throw bt_deserialize_invalid{
+                "Deserialization failed: did not consume the entire encoded string" + std::to_string(s.size())};
 }
 
 /// Deserializes the given string_view into a `T`, which is returned.
@@ -972,6 +978,23 @@ class bt_list_consumer {
             consume_dict_data();
         else
             throw bt_deserialize_invalid_type{"next bt value has unknown type"};
+    }
+
+    /// Finishes reading the list by reading through (and ignoring) any remaining values until it
+    /// reaches the end of the list, and confirms that the end of the list is in fact the end of the
+    /// input.  Will throw if anything doesn't parse, or if the list terminates but *isn't* at the
+    /// end of the buffer being parsed.
+    ///
+    /// It is not required to call this, but not calling it will not notice if there is invalid data
+    /// later in the list or after the end of the list.
+    void finish() {
+        while (!is_finished())
+            skip_value();
+
+        // If we consumed the entire buffer we should have only the terminating 'e' left (and
+        // `is_finished()` already checked that it is in fact an `e`).
+        if (data.size() != 1)
+            throw bt_deserialize_invalid{"Dict finished without consuming the entire buffer"};
     }
 };
 
@@ -1370,6 +1393,24 @@ class bt_dict_consumer : private bt_list_consumer {
         if (!skip_until(key))
             return std::nullopt;
         return consume<T>();
+    }
+
+    /// Finishes reading the dict by reading through (and ignoring) any remaining keys until it
+    /// reaches the end of the dict, and confirms that the end of the dict is in fact the end of the
+    /// input.  Will throw if anything doesn't parse, or if the dict terminates but *isn't* at the
+    /// end of the buffer being parsed.
+    ///
+    /// It is not required to call this, but not calling it will not notice if there is invalid data
+    /// later in the dict or after the end of the dict.
+    void finish() {
+        while (!is_finished()) {
+            flush_key();
+            skip_value();
+        }
+        // If we consumed the entire buffer we should have only the terminating 'e' left (and
+        // `is_finished()` already checked that it is in fact an `e`).
+        if (data.size() != 1)
+            throw bt_deserialize_invalid{"Dict finished without consuming the entire buffer"};
     }
 };
 

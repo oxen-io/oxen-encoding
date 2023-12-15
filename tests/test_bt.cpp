@@ -645,6 +645,34 @@ TEST_CASE("bt append_signature", "[bt][signature]") {
     }
 }
 
+TEST_CASE("bt trailing garbage detection", "[bt][deserialization][trailing-garbage]") {
+    REQUIRE_THROWS(bt_deserialize<bt_dict>("de🤔"));
+    REQUIRE_NOTHROW(bt_deserialize<bt_dict>("de"));
+    REQUIRE_THROWS(bt_deserialize<int>("i123eIN YOUR DATA READING YOUR INTS!"));
+    REQUIRE_NOTHROW(bt_deserialize<int>("i123e"));
+    REQUIRE_THROWS(bt_deserialize<std::string>("2:hibye"));
+    REQUIRE_NOTHROW(bt_deserialize<std::string>("2:hi"));
+
+    int x;
+    REQUIRE_NOTHROW(bt_deserialize("i456e", x));
+    CHECK(x == 456);
+    REQUIRE_THROWS(bt_deserialize("i789ewhoawhoawhooooaa", x));
+    CHECK(x == 789); // The integer still get sets, even though we throw
+
+    bt_dict_consumer dc1{"d1:ai123ee🤔"};
+    REQUIRE_THROWS(dc1.finish());
+
+    bt_dict_consumer dc2{"d1:ai123e1:bdee🤔"};
+    dc2.required("a");
+    CHECK(dc2.consume_integer<int>() == 123);
+    REQUIRE_THROWS(dc2.finish());
+
+    bt_dict_consumer dc3{"d1:ai123e1:bdee"};
+    dc3.required("a");
+    CHECK(dc3.consume_integer<int>() == 123);
+    REQUIRE_NOTHROW(dc3.finish());
+}
+
 #ifdef OXENC_APPLE_TO_CHARS_WORKAROUND
 TEST_CASE("apple to_chars workaround test", "[bt][apple][sucks]") {
     char buf[20];
