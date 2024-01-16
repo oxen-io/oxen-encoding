@@ -1,3 +1,30 @@
+oxen-encoding (1.0.10-1~ubuntu2304) lunar; urgency=medium
+
+  [ dr7ana ]
+  * Added require methods
+  * version bump 1.0.8 -> 1.0.9
+
+  [ Jason Rhinelander ]
+  * Condition simplification from #24
+  * Non-char basic_string_view inputs and views
+  * Remove unwanted extra skip_until
+  * More basic_string_view<C> support
+  * DRY and make clang happy
+  * Add support for appending bool values
+  * Move skip_value
+  * Remove unused/unreliable current_buffer()
+  * Add `append_signature` methods for easier signatures
+  * Add signature consumption/verification support
+
+  [ Thomas Winget ]
+  * Add append_encoded to list/dict producers
+
+  [ Jason Rhinelander ]
+  * Only turn on macos workaround under clang
+  * Add detection of trailing garbage in deserialization/consumption (#30)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 16 Jan 2024 14:04:45 -0400
+
 oxen-encoding (1.0.8-1~ubuntu2304) lunar; urgency=medium
 
   * Add missing cstdint header for uintN_t typedefs
