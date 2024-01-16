@@ -466,3 +466,38 @@ TEST_CASE("std::byte decoding", "[decoding][hex][base32z][base64]") {
     REQUIRE(b_out ==
             std::vector{std::byte{0xca}, std::byte{0x88}, std::byte{0xe4}, std::byte{0xe4}});
 }
+
+TEST_CASE("append_encoded", "[encoding][decoding]") {
+
+    auto pre_encoded = "d1:a3:fooe"sv;
+
+    oxenc::bt_list_producer btlp;
+
+    btlp.append_encoded(pre_encoded);
+
+    auto encoded_list = btlp.view();
+
+    CHECK(encoded_list == "ld1:a3:fooee"sv);
+
+    oxenc::bt_list_consumer btlc{encoded_list};
+
+    oxenc::bt_dict_consumer dict_from_list{btlc.consume_dict_consumer()};
+    CHECK(dict_from_list.require<std::string>("a"sv) == "foo"s);
+
+    oxenc::bt_dict_producer btdp;
+
+    btdp.append_encoded("dict"sv, pre_encoded);
+
+    auto encoded_dict = btdp.view();
+
+    CHECK(encoded_dict == "d4:dictd1:a3:fooee"sv);
+
+    oxenc::bt_dict_consumer btdc{encoded_dict};
+
+    oxenc::bt_dict_consumer dict_from_dict{btdc.require<oxenc::bt_dict_consumer>("dict"sv)};
+    CHECK(dict_from_dict.require<std::string>("a"sv) == "foo"s);
+
+#ifndef NDEBUG
+    REQUIRE_THROWS_AS(btdp.append_encoded("garbage"sv, "foobarbazlol"sv), std::exception);
+#endif
+}
