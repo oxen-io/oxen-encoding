@@ -1,3 +1,9 @@
+oxen-encoding (1.0.10-1~ubuntu2404) noble; urgency=medium
+
+  * deb for noble
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 04 Feb 2024 22:25:05 -0400
+
 oxen-encoding (1.0.10-1~ubuntu2310) mantic; urgency=medium
 
   [ dr7ana ]
