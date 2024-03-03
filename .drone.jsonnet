@@ -10,7 +10,14 @@ local submodules = {
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q ';
 
-local debian_pipeline(name, image, arch='amd64', deps=['g++'], cmake_extra='', build_type='Release', extra_cmds=[], allow_fail=false) = {
+local kitware_repo(distro) = [
+  'eatmydata ' + apt_get_quiet + ' install -y curl ca-certificates',
+  'curl -sSL https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - >/usr/share/keyrings/kitware-archive-keyring.gpg',
+  'echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ ' + distro + ' main" >/etc/apt/sources.list.d/kitware.list',
+  'eatmydata ' + apt_get_quiet + ' update',
+];
+
+local debian_pipeline(name, image, arch='amd64', deps=['g++'], extra_setup=[], cmake_extra='', build_type='Release', extra_cmds=[], allow_fail=false) = {
   kind: 'pipeline',
   type: 'docker',
   name: name,
@@ -27,7 +34,8 @@ local debian_pipeline(name, image, arch='amd64', deps=['g++'], cmake_extra='', b
         'echo "Building on ${DRONE_STAGE_MACHINE}"',
         'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
         apt_get_quiet + 'update',
-        apt_get_quiet + 'install -y eatmydata',
+        apt_get_quiet + 'install -y eatmydata',] + extra_setup 
+        + [
         'eatmydata ' + apt_get_quiet + 'dist-upgrade -y',
         'eatmydata ' + apt_get_quiet + 'install -y cmake git ninja-build pkg-config ccache ' + std.join(' ', deps),
         'mkdir build',
@@ -75,6 +83,7 @@ local full_llvm(version) = debian_pipeline(
   debian_pipeline('Ubuntu bionic (amd64)',
                   docker_base + 'ubuntu-bionic',
                   deps=['g++-8'],
+                  extra_setup=kitware_repo('bionic'),
                   cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8'),
   {
     kind: 'pipeline',
